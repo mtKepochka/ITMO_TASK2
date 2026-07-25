@@ -15,6 +15,14 @@ services:
     <<: *ticket-service
     command: ["demo"]
 
+  api:
+    <<: *ticket-service
+    entrypoint: ["ticket-api"]
+    environment:
+      TICKET_API_HOST: 0.0.0.0
+    ports:
+      - "${TICKET_API_PORT:-8000}:8000"
+
   train-ml:
     <<: *ticket-service
     entrypoint: ["python", "-m", "ticket_automation.training"]
@@ -28,6 +36,8 @@ services:
       - "ml"
       - "--classifier-model"
       - "/runtime/models/intent-classifier.joblib"
+      - "--rollout-config"
+      - "/app/config/rollout.auto-demo.json"
 
 volumes:
   ticket-runtime:

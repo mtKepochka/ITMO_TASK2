@@ -18,9 +18,10 @@ ID. Regex PII не является достаточным privacy-контро�
 
 В rules-режиме confidence — функция весов найденных фраз и штрафа за
 конкурирующую категорию. В ML-режиме это максимальный `predict_proba`, но
-он также не откалиброван на репрезентативных labels. Порог `0.70`
-демонстрирует abstention, но не доказывает требуемую precision; на
-синтетическом test split ML coverage при этом пороге равен нулю.
+он также не откалиброван на репрезентативных labels. Evaluation теперь
+сохраняет ненулевой sanity-порог из risk–coverage curve, но выбор порога
+и оценка сделаны на одном синтетическом test split. Это устраняет
+неработающий ML-demo, но не доказывает требуемую precision.
 
 ## Что нельзя доказать
 
@@ -82,7 +83,7 @@ validator. Локальный denylist output снижает очевидный 
 
 ## Развёртывание и версии
 
-Docker/Compose дают воспроизводимый CLI deployment и быстрый fast-forward
+Docker/Compose дают воспроизводимый CLI/API deployment и быстрый fast-forward
 update, но это не production rollout: нет registry promotion, подписания
 образов, SBOM, vulnerability gate и оркестратора. Version tags не должны
 перезаписываться; ML-артефакт переобучается после смены scikit-learn.

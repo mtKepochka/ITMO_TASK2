@@ -115,4 +115,4 @@ def test_cli_prints_application_version(capsys) -> None:
         main(["--version"])
 
     assert error.value.code == 0
-    assert capsys.readouterr().out.strip().endswith("0.2.0")
+    assert capsys.readouterr().out.strip().endswith("0.3.0")

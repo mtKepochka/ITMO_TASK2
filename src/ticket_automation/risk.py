@@ -29,7 +29,10 @@ def _ticket_text(ticket: Ticket) -> str:
     return f"{ticket.subject} {ticket.text}".lower()
 
 
-def assess_risk(ticket: Ticket, category: Category) -> RiskAssessment:
+def assess_risk(
+    ticket: Ticket,
+    category: Category | None = None,
+) -> RiskAssessment:
     text = _ticket_text(ticket)
     pii_types = []
     if EMAIL_RE.search(text):
@@ -45,16 +48,36 @@ def assess_risk(ticket: Ticket, category: Category) -> RiskAssessment:
         for name, phrases in HIGH_RISK_SIGNALS.items()
         if any(phrase in text for phrase in phrases)
     )
+    if reasons:
+        level = "high"
+    else:
+        level = "low"
+    assessment = RiskAssessment(
+        level,
+        bool(pii_types),
+        tuple(sorted(set(reasons))),
+    )
+    return apply_category_risk(assessment, category) if category else assessment
+
+
+def apply_category_risk(
+    assessment: RiskAssessment,
+    category: Category,
+) -> RiskAssessment:
+    reasons = list(assessment.reasons)
     if category in DENYLIST_CATEGORIES:
         reasons.append(f"denylist_category:{category}")
-
-    if reasons:
+    if assessment.risk_level == "high" or category in DENYLIST_CATEGORIES:
         level = "high"
     elif category == "unknown":
         level = "medium"
     else:
         level = "low"
-    return RiskAssessment(level, bool(pii_types), tuple(sorted(set(reasons))))
+    return RiskAssessment(
+        level,
+        assessment.contains_pii,
+        tuple(sorted(set(reasons))),
+    )
 
 
 def redact_pii(text: str) -> str:

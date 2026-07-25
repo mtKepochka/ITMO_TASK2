@@ -30,6 +30,7 @@ def decide(
     *,
     draft_response: str | None = None,
     fallback_used: bool = False,
+    min_classification_confidence: float = MIN_CLASSIFICATION_CONFIDENCE,
 ) -> Decision:
     category = classification.category
     route = ROUTES[category]
@@ -40,7 +41,7 @@ def decide(
     elif category in DENYLIST_CATEGORIES:
         action = "escalate"
         reason = "category_not_allowed_for_automation"
-    elif classification.confidence < MIN_CLASSIFICATION_CONFIDENCE:
+    elif classification.confidence < min_classification_confidence:
         action = "escalate"
         reason = "low_classification_confidence"
     elif retrieval.score < MIN_RETRIEVAL_SCORE:
@@ -62,4 +63,5 @@ def decide(
         draft_response=draft_response,
         route=route,
         fallback_used=fallback_used,
+        auto_reply_eligible=action == "auto_reply",
     )

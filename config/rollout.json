@@ -1,0 +1,9 @@
+{
+  "version": "rollout-suggest-v1",
+  "mode": "suggest",
+  "kill_switch": false,
+  "traffic_percentage": 0,
+  "allowed_categories": [
+    "service_outage"
+  ]
+}

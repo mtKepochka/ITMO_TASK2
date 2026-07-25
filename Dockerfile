@@ -21,6 +21,7 @@ WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY src ./src
 COPY data ./data
+COPY config ./config
 
 RUN python -m pip install --no-cache-dir . \
     && test "$(python -c 'import ticket_automation; print(ticket_automation.__version__)')" = "${APP_VERSION}" \

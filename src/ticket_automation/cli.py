@@ -79,6 +79,11 @@ def _add_generator_arguments(parser: argparse.ArgumentParser) -> None:
         type=Path,
         help="trusted local ML artifact path",
     )
+    parser.add_argument(
+        "--rollout-config",
+        type=Path,
+        help="versioned rollout JSON; defaults to TICKET_ROLLOUT_CONFIG",
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -162,11 +167,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             classifier = TfidfIntentClassifier.load_trusted(model_path)
         except (FileNotFoundError, ValueError) as error:
             parser.error(f"{error}; run `make train-ml` first")
-    pipeline = TicketPipeline(
-        generator=generator,
-        audit=audit,
-        classifier=classifier,
-    )
+    try:
+        pipeline = TicketPipeline(
+            generator=generator,
+            audit=audit,
+            classifier=classifier,
+            rollout_path=args.rollout_config,
+        )
+    except ValueError as error:
+        parser.error(str(error))
 
     if args.command == "demo":
         source_path = DEMO_PATH
@@ -192,8 +201,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         except (OSError, json.JSONDecodeError, ValueError) as error:
             parser.error(f"cannot load tickets from {source_path}: {error}")
 
-    for ticket in tickets:
-        _print_result(ticket.id, pipeline.process(ticket))
+    try:
+        for ticket in tickets:
+            _print_result(ticket.id, pipeline.process(ticket))
+    finally:
+        pipeline.close()
     return 0
 
 

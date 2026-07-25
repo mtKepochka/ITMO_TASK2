@@ -55,6 +55,9 @@ class TfidfIntentClassifier:
         self.estimator = estimator
         self.training_examples = training_examples
         self.metadata = metadata or {}
+        self.confidence_threshold = float(
+            self.metadata.get("confidence_threshold", 0.7)
+        )
         dataset_hash = str(
             self.metadata.get("dataset_sha256", "unversioned")
         )
@@ -129,7 +132,10 @@ class TfidfIntentClassifier:
                 "format_version": MODEL_FORMAT_VERSION,
                 "sklearn_version": sklearn.__version__,
                 "training_examples": self.training_examples,
-                "metadata": metadata,
+                "metadata": {
+                    **metadata,
+                    "confidence_threshold": self.confidence_threshold,
+                },
                 "vectorizer": self.vectorizer,
                 "estimator": self.estimator,
             },

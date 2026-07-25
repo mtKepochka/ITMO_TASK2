@@ -29,9 +29,12 @@ Regression с `class_weight=balanced`. Положительные вклады �
 синтетическом JSONL, сохраняет SHA-256 набора вместе с моделью и формирует
 macro F1, поклассовый отчёт, confusion matrix, coverage и covered
 accuracy. `make demo-ml` проверяет загрузку артефакта и полный pipeline.
-На текущих 56 train и 21 test примерах macro F1 равен `0.7541`, а coverage
-при неизменном policy-пороге `0.70` — `0.0`. Это полезный отрицательный
-результат: порог нельзя ослаблять только ради красивого demo.
+На текущих 56 train и 21 test примерах macro F1 равен `0.7541`.
+Evaluation строит risk–coverage curve и выбирает sanity-порог с минимум
+30% coverage, максимизируя covered accuracy, затем coverage. Выбранный
+порог сохраняется вместе с моделью. Поскольку выбор порога и отчёт
+используют один маленький синтетический holdout, это инженерная проверка,
+а не честная оценка будущего качества.
 
 Максимум `predict_proba` у Logistic Regression не откалиброван и не
 является надёжной оценкой риска на реальном потоке. Датасет создан вручную
@@ -102,7 +105,9 @@ invalid output или отсутствие grounded-контекста вклю�
 ## Policy, реализованный в PoC
 
 Порядок правил: high risk/PII → `escalate`; denylist → `escalate`;
-confidence ниже `0.70` → `escalate`; retrieval ниже `0.35` →
-`suggest_to_agent`; `service_outage` с сильными сигналами → `auto_reply`;
-остальное → `suggest_to_agent`. Числа — демонстрационные параметры, не
-результат offline-оценки.
+confidence ниже порога выбранного классификатора → `escalate`; retrieval
+ниже `0.35` → `suggest_to_agent`; `service_outage` с сильными сигналами
+становится кандидатом на автоответ. Финальный rollout gate по умолчанию
+превращает кандидата в `suggest_to_agent`; `auto_reply` требует
+версионированных mode, kill switch, allowlist и traffic percentage.
+Числа — параметры PoC, не результат оценки на реальном потоке.

@@ -1,0 +1,9 @@
+{
+  "version": "rollout-auto-demo-v1",
+  "mode": "auto_reply",
+  "kill_switch": false,
+  "traffic_percentage": 100,
+  "allowed_categories": [
+    "service_outage"
+  ]
+}

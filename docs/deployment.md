@@ -1,7 +1,7 @@
 # Развёртывание и обновления
 
-Проект является CLI/исследовательским PoC, а не постоянно работающим HTTP-
-сервисом. Поэтому deployment означает сборку воспроизводимого образа и
+Проект предоставляет CLI и локальный FastAPI/dashboard, но не является
+production-сервисом. Deployment означает сборку воспроизводимого образа и
 запуск нужной команды в контейнере. Образ работает от непривилегированного
 пользователя, а audit, ML-модель и evaluation report хранятся в отдельном
 Docker volume.
@@ -15,8 +15,8 @@ make container-demo
 ```
 
 Команда собирает immutable-тег вида
-`ticket-automation:0.2.0-<git-revision>`, а также удобные указатели
-`ticket-automation:0.2.0` и `ticket-automation:latest`, затем запускает
+`ticket-automation:0.3.0-<git-revision>`, а также удобные указатели
+`ticket-automation:0.3.0` и `ticket-automation:latest`, затем запускает
 demo. Для ML-пути:
 
 ```bash
@@ -29,8 +29,13 @@ Compose использует именованный volume `ticket-automation_ti
 попадают в Git. Посмотреть версию без запуска demo:
 
 ```bash
-docker run --rm ticket-automation:0.2.0 --version
+docker run --rm ticket-automation:0.3.0 --version
 ```
+
+Долгоживущий demo API запускается командой `make container-api`; Makefile
+передаёт Compose вычисленные `TICKET_TAG`, `TICKET_VERSION` и
+`TICKET_REVISION`. Порт по умолчанию — `8000`, dashboard находится на `/`,
+OpenAPI — на `/docs`, health — на `/api/v1/health`.
 
 ## Версионность
 

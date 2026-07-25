@@ -20,14 +20,16 @@ shadow/suggest-пилоте, а не выводить из искусствен�
 - отдельные rules для email, телефона, номера карты и high-risk фраз;
 - локальная JSON-база знаний и lexical retrieval;
 - policy с denylist, узкой allowlist и abstention;
+- versioned rollout с suggest-by-default, kill switch, allowlist и canary;
 - детерминированный grounded-ответ и безопасный fallback при отказе;
 - опциональные HTTP-адаптеры Ollama/OpenRouter с локальной валидацией;
 - JSONL-аудит без исходного текста тикета;
-- CLI, четыре demo-сценария, unit и smoke tests;
-- idempotency по ticket ID в рамках одного экземпляра pipeline.
+- CLI, FastAPI, web-панель, benchmark, unit и smoke tests;
+- single-flight idempotency по ticket ID в рамках одного процесса;
+- параллельные classification/risk scorers с общим deadline 500 мс.
 
 Runtime не требует API-ключей, сети или скачивания моделей.
-Текущая версия приложения — `0.2.0`.
+Текущая версия приложения — `0.3.0`.
 
 Дополнительно реализована изолированная дискретно-событийная модель СМО:
 она сравнивает baseline, burst, деградацию LLM и incident-mode на уровне
@@ -44,6 +46,9 @@ python -m venv .venv
 python -m pip install -e '.[dev]'
 make test
 make demo
+make demo-auto
+make api
+make benchmark
 make smoke
 make train-ml
 make demo-ml
@@ -64,6 +69,10 @@ python -m ticket_automation.cli demo --simulate-generator-failure
 CLI печатает категорию, эвристический confidence, risk, retrieval,
 решение, fallback и путь к audit log. По умолчанию аудит записывается в
 `audit/decisions.jsonl`; runtime-файл исключён из Git.
+
+`make api` запускает API и dashboard на `http://127.0.0.1:8000`;
+OpenAPI доступен на `/docs`, health — на `/api/v1/health`. Контейнерный
+вариант запускается одной командой `make container-api`.
 
 ### Быстрое развёртывание
 
@@ -108,6 +117,10 @@ python -m ticket_automation.cli process \
 проверки train/evaluate/load/inference. Его метрики нельзя выдавать за
 оценку качества на реальном потоке. Артефакт `joblib` следует загружать
 только если он создан этим проектом в доверенной среде.
+Отчёт строит threshold/coverage curve и сохраняет выбранный sanity-порог
+в артефакте модели. Сейчас это даёт ненулевую selective coverage, но
+порог подобран на том же маленьком синтетическом holdout и не является
+доказательством качества.
 
 ### Опциональный LLM
 
@@ -172,10 +185,13 @@ Workflow устанавливает проект с нуля, выполняет
 
 | Ticket | Ожидаемое решение | Причина |
 |---|---|---|
-| приложение не открывается, общий сбой | `auto_reply` | безопасная allowlist и релевантная статья |
+| приложение не открывается, общий сбой | `suggest_to_agent` | default rollout не отправляет ответ автоматически |
 | двойное списание с номером карты | `escalate` | payment, PII и high risk |
 | «Опять не работает» | `escalate` | низкий confidence |
 | вопрос о тарифе | `suggest_to_agent` | категория вне auto-reply allowlist |
+
+`make demo-auto` использует отдельную демонстрационную rollout-конфигурацию
+и показывает `auto_reply` только для разрешённого `service_outage`.
 
 С `--simulate-generator-failure` outage получает утверждённый шаблон и
 `fallback_used=true`; категория без такого шаблона эскалируется.
@@ -188,7 +204,10 @@ safety-решения. В rules-режиме confidence основан на ве
 ML-режиме это максимальный `predict_proba`. Ни одно значение не
 откалибровано на репрезентативных данных.
 
-PoC выполняется одним процессом, последовательно и на четырёх статьях.
+PoC выполняется одним процессом и на четырёх статьях. Preprocessing
+нормализует HTML/Unicode и маскирует PII до классификатора; classification
+и risk scan выполняются параллельно с общим deadline. Retrieval и
+generation остаются синхронными после safety gate.
 Внешний LLM по умолчанию выключен; адаптеры являются точкой расширения, а
 не production-интеграцией. Обучаемая модель является sparse baseline на
 небольшом синтетическом наборе, а не production-моделью. Здесь нет

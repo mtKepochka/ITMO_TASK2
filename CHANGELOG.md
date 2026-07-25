@@ -2,6 +2,23 @@
 
 Формат основан на Keep a Changelog, версии используют Semantic Versioning.
 
+## 0.3.0 — 2026-07-25
+
+### Added
+
+- FastAPI, OpenAPI, health/metrics endpoints и локальный dashboard;
+- versioned suggest-by-default rollout с kill switch, allowlist и canary;
+- параллельный hot path с общим deadline и fault-injection benchmark;
+- HTML/Unicode normalization и PII masking до intent classifier;
+- threshold/coverage curve и порог в ML-артефакте.
+
+### Fixed
+
+- конкурентные повторы одного ticket ID используют single-flight и создают
+  одну audit-запись;
+- автоматическая отправка больше не включена default-конфигурацией;
+- JSONL-аудит защищён от конкурентной записи внутри процесса.
+
 ## 0.2.0 — 2026-07-25
 
 ### Added

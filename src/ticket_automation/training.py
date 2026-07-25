@@ -4,9 +4,10 @@ import argparse
 import hashlib
 import json
 import os
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence, cast
+from typing import cast
 
 from sklearn.metrics import (
     classification_report,
@@ -36,6 +37,11 @@ DEFAULT_REPORT = Path(
         PROJECT_ROOT / "artifacts" / "ml" / "evaluation.json",
     )
 )
+
+THRESHOLD_CANDIDATES = tuple(
+    round(value / 100, 2) for value in range(20, 71)
+)
+MIN_THRESHOLD_COVERAGE = 0.30
 
 
 @dataclass(frozen=True)
@@ -100,7 +106,47 @@ def train_and_evaluate(
     expected = [record.category for record in test]
     predicted = [result.category for result in predictions]
     confidences = [result.confidence for result in predictions]
-    threshold = 0.70
+    threshold_curve = []
+    for candidate in THRESHOLD_CANDIDATES:
+        candidate_covered = [
+            index
+            for index, confidence in enumerate(confidences)
+            if confidence >= candidate
+        ]
+        candidate_accuracy = (
+            sum(
+                predicted[index] == expected[index]
+                for index in candidate_covered
+            )
+            / len(candidate_covered)
+            if candidate_covered
+            else 0.0
+        )
+        threshold_curve.append(
+            {
+                "threshold": candidate,
+                "coverage": round(
+                    len(candidate_covered) / len(test),
+                    4,
+                ),
+                "covered_accuracy": round(candidate_accuracy, 4),
+            }
+        )
+    eligible_thresholds = [
+        point
+        for point in threshold_curve
+        if point["coverage"] >= MIN_THRESHOLD_COVERAGE
+    ]
+    selected = max(
+        eligible_thresholds,
+        key=lambda point: (
+            point["covered_accuracy"],
+            point["coverage"],
+            point["threshold"],
+        ),
+    )
+    threshold = float(selected["threshold"])
+    classifier.confidence_threshold = threshold
     covered = [
         index for index, confidence in enumerate(confidences)
         if confidence >= threshold
@@ -140,9 +186,18 @@ def train_and_evaluate(
             else 0.0,
             4,
         ),
+        "threshold_selection": {
+            "minimum_coverage": MIN_THRESHOLD_COVERAGE,
+            "method": (
+                "maximize covered accuracy, then coverage, on the synthetic "
+                "sanity holdout"
+            ),
+            "curve": threshold_curve,
+        },
         "note": (
-            "Synthetic sanity dataset; metrics are not production quality evidence "
-            "and confidence is not calibrated."
+            "Synthetic sanity dataset; threshold selection and metrics use the "
+            "same small holdout and are not production quality evidence. "
+            "Confidence is not calibrated."
         ),
     }
     classifier.save(

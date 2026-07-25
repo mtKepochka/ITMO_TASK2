@@ -2,26 +2,28 @@
 
 ## Границы PoC
 
-В репозитории реализован один локальный процесс: правила, выбираемый
-rules/ML-классификатор, lexical retrieval, policy, детерминированный
-генератор и JSONL-аудит. ML-вариант обучается отдельно и подставляется
-через тот же callable-интерфейс. Опциональные Ollama/OpenRouter-адаптеры
-реализуют интерфейс генератора, но по умолчанию выключены.
-Последовательное исполнение делает поведение наблюдаемым в demo, но не
-имитирует брокер или распределённое хранилище. Ниже описана целевая схема.
+В репозитории реализован один локальный FastAPI/CLI-процесс: preprocessing,
+параллельные rules/ML classification и risk scan, lexical retrieval,
+policy, rollout gate, генератор и JSONL-аудит. ML-вариант обучается
+отдельно и подставляется через тот же callable-интерфейс. Опциональные
+Ollama/OpenRouter-адаптеры по умолчанию выключены. PoC не имитирует брокер
+или распределённое хранилище; целевая схема показана ниже.
 
 ```mermaid
 flowchart LR
     C[Chat / email / web / mobile] --> I[Ingestion and normalization]
     I --> M[Local fast classifier]
-    M --> R[PII and category-aware risk scan]
-    R --> P[Policy engine]
+    I --> R[PII and risk scan]
+    M --> P[Policy engine]
+    R --> P
     P -->|risk / abstention| O[Operator queue]
     P -->|safe candidate| Q[Async work queue]
     Q --> K[Knowledge retrieval]
     K --> G[Guarded generator]
     G --> V[Output validation]
-    V -->|valid and allowed| A[Reply or agent suggestion]
+    V --> RG{Versioned rollout gate}
+    RG -->|suggest default| S[Agent suggestion]
+    RG -->|allowlist + canary| A[Auto reply]
     V -->|invalid / timeout| O
     K <--> KB[(Versioned knowledge base)]
     I --> D[(Ticket store)]
@@ -33,8 +35,10 @@ flowchart LR
 
 Ingestion приводит каналы к единой схеме `Ticket`, назначает стабильный
 ID и сохраняет исходник в защищённом ticket store. На синхронном пути
-локальный классификатор возвращает категорию и confidence, затем
-category-aware rules находят PII/high-risk и применяют denylist. Policy
+preprocessing очищает HTML, нормализует Unicode и маскирует PII до
+классификатора. Классификатор и независимый risk scan запускаются
+параллельно и делят один deadline 500 мс; denylist применяется после их
+объединения. Policy
 сразу завершает risky, PII, denylist и low-confidence случаи эскалацией,
 не вызывая retrieval или generator. Этот путь не вызывает LLM и должен
 укладываться в ориентир 500 мс.
@@ -46,7 +50,7 @@ PII, запрещённых обещаний и ссылок на действи
 подтверждает. Рискованные категории сразу попадают оператору, генератор
 для них не вызывается.
 
-В PoC retrieval и генерация выполняются последовательно ради простоты CLI.
+В PoC retrieval и генерация выполняются синхронно после hot path.
 Retrieval вызывается только после раннего safety gate и получает
 редактированный текст. Его результат участвует в окончательном policy-
 решении. Provider получает тот же очищенный текст и разрешённую статью;
@@ -91,8 +95,9 @@ store. Повторная доставка возвращает сохранён
 pipeline создаёт новую ревизию без затирания истории. Отправка ответа и
 фиксация решения связываются через transactional outbox.
 
-PoC кэширует первое решение по ID только в рамках экземпляра процесса и
-пишет одну строку JSONL. Межпроцессную идемпотентность он не обещает.
+PoC использует single-flight по ID: конкурентные повторы в одном процессе
+ждут один результат и создают одну строку JSONL. Межпроцессную
+идемпотентность он не обещает.
 Аудит содержит сигналы, версии pipeline/classifier/KB, scores, route,
 latency и fallback, но не текст тикета, найденные email, телефон или номер
 карты.

@@ -12,9 +12,9 @@
    low-confidence и generator-failure сценарии.
 7. Unit и smoke tests закрепили safety-инварианты, после чего документация
    была сверена с реальными threshold и поведением кода.
-8. Сознательно не реализованы внешний LLM, обучение на реальных данных,
-   UI, настоящий брокер, production storage и Kubernetes: они не нужны для
-   проверки выбранной архитектурной идеи.
+8. На первом этапе сознательно не реализованы внешний LLM, UI, настоящий
+   брокер, production storage и Kubernetes: они не нужны для проверки
+   выбранной архитектурной идеи.
 9. После основного PoC добавлена изолированная SimPy-модель сети очередей с
    условными переходами, конечными буферами и balance-инвариантами.
 10. Отдельно реализованы burst, provider degradation, circuit breaker и
@@ -36,3 +36,9 @@
 16. Для воспроизводимого развёртывания добавлены единая версия приложения,
     Docker/Compose, immutable version tag, audit-версии и fast-forward
     update/rollback workflow.
+17. Архитектурное ревью привело к suggest-by-default rollout, локальному
+    FastAPI/dashboard, HTML/Unicode preprocessing и конкурентному
+    fault-injection benchmark.
+18. Classification и risk scan распараллелены под общим deadline;
+    idempotency усилена single-flight, а ML-артефакт получил явно
+    ограниченный sanity threshold/coverage curve.

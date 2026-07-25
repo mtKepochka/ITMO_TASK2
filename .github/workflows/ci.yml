@@ -67,6 +67,28 @@ jobs:
           assert report["test_examples"] == 21
           assert 0.0 <= report["macro_f1"] <= 1.0
           assert len(report["confusion_matrix"]) == 7
+          assert report["coverage"] >= 0.3
+          assert report["covered_accuracy"] >= 0.9
+          PY
+
+      - name: Run concurrent pipeline benchmark
+        run: |
+          python -m ticket_automation.benchmark \
+            --tickets 200 --concurrency 20 > /tmp/benchmark.json
+          python -m ticket_automation.benchmark \
+            --tickets 200 --concurrency 20 --failure-every 10 \
+            > /tmp/benchmark-fault.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          regular = json.loads(Path("/tmp/benchmark.json").read_text())
+          fault = json.loads(Path("/tmp/benchmark-fault.json").read_text())
+          assert regular["completed"] == 200
+          assert regular["exceptions"] == 0
+          assert regular["unsafe_auto_replies"] == 0
+          assert fault["technical_fallbacks"] == 20
+          assert fault["unsafe_auto_replies"] == 0
           PY
 
       - name: Build deployment image
@@ -81,7 +103,11 @@ jobs:
           test "$(docker run --rm "ticket-automation:$version" --version)" = \
             "ticket-automation $version"
           docker run --rm "ticket-automation:$version" demo > /tmp/container-demo.out
-          grep -q '"action": "auto_reply"' /tmp/container-demo.out
+          grep -q '"action": "suggest_to_agent"' /tmp/container-demo.out
+          docker run --rm "ticket-automation:$version" demo \
+            --rollout-config /app/config/rollout.auto-demo.json \
+            > /tmp/container-auto-demo.out
+          grep -q '"action": "auto_reply"' /tmp/container-auto-demo.out
           TICKET_TAG="$version-${GITHUB_SHA::12}" \
             TICKET_VERSION="$version" docker compose config --quiet
 

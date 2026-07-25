@@ -67,6 +67,8 @@ class Decision:
     draft_response: str | None
     route: str
     fallback_used: bool
+    auto_reply_eligible: bool = False
+    rollout_version: str = "unconfigured"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -79,6 +81,8 @@ class ProcessingResult:
     retrieval: RetrievalResult
     decision: Decision
     audit_path: str
+    fast_path_ms: float = 0.0
+    technical_errors: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -95,4 +99,6 @@ class ProcessingResult:
             },
             **self.decision.to_dict(),
             "audit_path": self.audit_path,
+            "fast_path_ms": self.fast_path_ms,
+            "technical_errors": list(self.technical_errors),
         }

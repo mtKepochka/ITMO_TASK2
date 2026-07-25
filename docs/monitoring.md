@@ -1,8 +1,11 @@
 # Monitoring
 
-Метрики связываются по `ticket_id`, версии pipeline, classifier и базы
-знаний. В PoC эти версии уже записываются в JSONL audit, но telemetry не
-содержит исходный текст или найденное PII.
+Метрики связываются по `ticket_id`, версии pipeline, rollout, classifier и
+базы знаний. В PoC версии записываются в JSONL audit, а FastAPI endpoint
+`/api/v1/metrics` показывает число запросов, распределение actions,
+средний fast-path latency и technical fallback. Это process-local
+счётчики, не замена Prometheus. Telemetry не содержит исходный текст или
+найденное PII.
 
 ## Online-сигналы
 

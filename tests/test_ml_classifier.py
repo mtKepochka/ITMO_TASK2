@@ -108,4 +108,6 @@ def test_training_writes_reproducible_model_report(tmp_path: Path) -> None:
     assert first["train_examples"] == 56
     assert first["test_examples"] == 21
     assert 0.0 <= first["macro_f1"] <= 1.0
+    assert first["coverage"] >= 0.3
+    assert first["covered_accuracy"] >= 0.9
     assert (tmp_path / "first.joblib").is_file()

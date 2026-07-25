@@ -149,6 +149,6 @@ def test_pipeline_replaces_unsafe_provider_output_with_fallback(
 
     result = pipeline.process(TICKET)
 
-    assert result.decision.action == "auto_reply"
+    assert result.decision.action == "suggest_to_agent"
     assert result.decision.fallback_used is True
     assert "проверяем состояние сервиса" in result.decision.draft_response

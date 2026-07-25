@@ -4,8 +4,10 @@ VERSION := $(shell PYTHONPATH=src $(PYTHON) -c "import ticket_automation; print(
 REVISION := $(shell git rev-parse --short=12 HEAD 2>/dev/null || echo unknown)
 DEPLOY_TAG := $(VERSION)-$(REVISION)
 
-.PHONY: test demo smoke train-ml demo-ml simulate simulate-burst simulate-compare \
-	docker-build container-demo container-train-ml container-demo-ml deploy \
+.PHONY: test demo demo-auto api benchmark benchmark-fault smoke train-ml demo-ml \
+	simulate simulate-burst simulate-compare \
+	docker-build container-demo container-api container-train-ml \
+	container-demo-ml deploy \
 	deploy-ml update update-ml
 
 test:
@@ -13,6 +15,21 @@ test:
 
 demo:
 	PYTHONPATH=src $(PYTHON) -m ticket_automation.cli demo
+
+demo-auto:
+	PYTHONPATH=src $(PYTHON) -m ticket_automation.cli demo \
+		--rollout-config config/rollout.auto-demo.json
+
+api:
+	PYTHONPATH=src $(PYTHON) -m ticket_automation.api
+
+benchmark:
+	PYTHONPATH=src $(PYTHON) -m ticket_automation.benchmark \
+		--tickets 1000 --concurrency 20
+
+benchmark-fault:
+	PYTHONPATH=src $(PYTHON) -m ticket_automation.benchmark \
+		--tickets 1000 --concurrency 20 --failure-every 10
 
 smoke:
 	PYTHONPATH=src sh scripts/smoke_test.sh
@@ -23,7 +40,8 @@ train-ml:
 demo-ml: train-ml
 	PYTHONPATH=src $(PYTHON) -m ticket_automation.cli demo \
 		--classifier ml \
-		--classifier-model artifacts/models/intent-classifier.joblib
+		--classifier-model artifacts/models/intent-classifier.joblib \
+		--rollout-config config/rollout.auto-demo.json
 
 simulate:
 	PYTHONPATH=src $(PYTHON) -m simulation.cli baseline --seed 42
@@ -46,6 +64,10 @@ docker-build:
 container-demo: docker-build
 	TICKET_IMAGE=$(IMAGE) TICKET_TAG=$(DEPLOY_TAG) TICKET_VERSION=$(VERSION) \
 		TICKET_REVISION=$(REVISION) docker compose run --rm demo
+
+container-api: docker-build
+	TICKET_IMAGE=$(IMAGE) TICKET_TAG=$(DEPLOY_TAG) TICKET_VERSION=$(VERSION) \
+		TICKET_REVISION=$(REVISION) docker compose up api
 
 container-train-ml: docker-build
 	TICKET_IMAGE=$(IMAGE) TICKET_TAG=$(DEPLOY_TAG) TICKET_VERSION=$(VERSION) \
