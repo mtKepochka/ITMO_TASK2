@@ -1,0 +1,13 @@
+.git
+.github
+.venv
+.pytest_cache
+__pycache__
+*.py[cod]
+*.egg-info
+artifacts
+audit
+dist
+build
+.env
+Talent Track.html

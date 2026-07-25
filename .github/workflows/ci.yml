@@ -69,6 +69,22 @@ jobs:
           assert len(report["confusion_matrix"]) == 7
           PY
 
+      - name: Build deployment image
+        run: |
+          version="$(PYTHONPATH=src python -c \
+            'import ticket_automation; print(ticket_automation.__version__)')"
+          docker build \
+            --build-arg APP_VERSION="$version" \
+            --build-arg VCS_REF="${GITHUB_SHA}" \
+            --tag "ticket-automation:$version" \
+            .
+          test "$(docker run --rm "ticket-automation:$version" --version)" = \
+            "ticket-automation $version"
+          docker run --rm "ticket-automation:$version" demo > /tmp/container-demo.out
+          grep -q '"action": "auto_reply"' /tmp/container-demo.out
+          TICKET_TAG="$version-${GITHUB_SHA::12}" \
+            TICKET_VERSION="$version" docker compose config --quiet
+
       - name: Run queueing scenarios
         run: |
           make simulate

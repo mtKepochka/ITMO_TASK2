@@ -1,0 +1,33 @@
+name: ticket-automation
+
+x-ticket-service: &ticket-service
+  image: ${TICKET_IMAGE:-ticket-automation}:${TICKET_TAG:?run through Makefile}
+  build:
+    context: .
+    args:
+      APP_VERSION: ${TICKET_VERSION:?run through Makefile}
+      VCS_REF: ${TICKET_REVISION:-unknown}
+  volumes:
+    - ticket-runtime:/runtime
+
+services:
+  demo:
+    <<: *ticket-service
+    command: ["demo"]
+
+  train-ml:
+    <<: *ticket-service
+    entrypoint: ["python", "-m", "ticket_automation.training"]
+    command: ["train"]
+
+  demo-ml:
+    <<: *ticket-service
+    command:
+      - "demo"
+      - "--classifier"
+      - "ml"
+      - "--classifier-model"
+      - "/runtime/models/intent-classifier.joblib"
+
+volumes:
+  ticket-runtime:
