@@ -24,3 +24,9 @@
 12. Для дальнейших экспериментов добавлены выключенные по умолчанию
     Ollama/OpenRouter-адаптеры; секрет остаётся в окружении, а provider
     errors и небезопасный output используют прежний fail-closed fallback.
+13. Добавлен опциональный обучаемый TF-IDF + Logistic Regression
+    классификатор, синтетический train/test harness, сохранение модели и
+    отчёт с macro F1/confusion matrix/risk coverage.
+14. ML-путь встроен через интерфейс pipeline, но rules оставлен default;
+    прежняя safety-policy применяется к обоим классификаторам без
+    послабления порога ради demo.

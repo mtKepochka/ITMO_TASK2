@@ -4,9 +4,10 @@
 
 Фразовые веса и lexical retrieval запускаются без сети, легко объясняются
 в audit и позволяют проверить главный тезис: safety-policy не зависит от
-генератора. Для четырёх demo-тикетов обученная модель создала бы ложное
-ощущение качества. Следующий честный baseline — TF-IDF + Logistic
-Regression/Linear SVM на временном split.
+генератора. Дополнительно реализован TF-IDF + Logistic Regression baseline,
+но он выключен по умолчанию: 77 синтетических фраз проверяют инженерный
+контур, а не качество. Следующий честный шаг — сравнение с rules и Linear
+SVM на временном split реальных данных.
 
 ## Самое слабое место и assumptions
 
@@ -15,10 +16,11 @@ Regression/Linear SVM на временном split.
 нормализованный channel input, актуальная база знаний и уникальный ticket
 ID. Regex PII не является достаточным privacy-контролем для production.
 
-Confidence — функция весов найденных фраз и штрафа за конкурирующую
-категорию. Это не вероятность, потому что score не обучен и не
-откалиброван на репрезентативных labels. Порог `0.70` демонстрирует
-abstention, но не доказывает требуемую precision.
+В rules-режиме confidence — функция весов найденных фраз и штрафа за
+конкурирующую категорию. В ML-режиме это максимальный `predict_proba`, но
+он также не откалиброван на репрезентативных labels. Порог `0.70`
+демонстрирует abstention, но не доказывает требуемую precision; на
+синтетическом test split ML coverage при этом пороге равен нулю.
 
 ## Что нельзя доказать
 
@@ -40,8 +42,8 @@ suggest-mode до ограниченного auto-reply canary.
 
 Следующие эксперименты:
 
-1. сравнить rules с TF-IDF Logistic Regression и Linear SVM по
-   risk–coverage curve;
+1. сравнить реализованные rules и TF-IDF Logistic Regression с Linear SVM
+   по risk–coverage curve на реальном temporal split;
 2. сравнить BM25 и hybrid retrieval по incorrect-context и Recall@k;
 3. в suggest-пилоте сравнить детерминированный шаблон и grounded LLM по
    acceptance, размеру правок, safety и стоимости;

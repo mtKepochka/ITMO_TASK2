@@ -15,7 +15,8 @@ shadow/suggest-пилоте, а не выводить из искусствен�
 
 ## Что реализовано
 
-- интерпретируемый классификатор семи intent-категорий;
+- два классификатора семи intent-категорий: rules по умолчанию и
+  обучаемый TF-IDF + Logistic Regression;
 - отдельные rules для email, телефона, номера карты и high-risk фраз;
 - локальная JSON-база знаний и lexical retrieval;
 - policy с denylist, узкой allowlist и abstention;
@@ -43,6 +44,8 @@ python -m pip install -e '.[dev]'
 make test
 make demo
 make smoke
+make train-ml
+make demo-ml
 make simulate
 make simulate-burst
 make simulate-compare
@@ -60,6 +63,28 @@ python -m ticket_automation.cli demo --simulate-generator-failure
 CLI печатает категорию, эвристический confidence, risk, retrieval,
 решение, fallback и путь к audit log. По умолчанию аудит записывается в
 `audit/decisions.jsonl`; runtime-файл исключён из Git.
+
+### Обучаемый классификатор
+
+`make train-ml` обучает локальный sparse baseline на
+`data/intent_dataset.jsonl`, сохраняет модель в
+`artifacts/models/intent-classifier.joblib` и offline-отчёт в
+`artifacts/ml/evaluation.json`. Оба runtime-артефакта исключены из Git.
+После обучения режим включается командой:
+
+```bash
+python -m ticket_automation.cli process \
+  --classifier ml \
+  --classifier-model artifacts/models/intent-classifier.joblib \
+  --text "Не могу войти в аккаунт"
+```
+
+Модель объединяет словные и символьные TF-IDF признаки и обучает
+многоклассовую Logistic Regression с class weights. Датасет в
+репозитории синтетический и нужен только для воспроизводимой
+проверки train/evaluate/load/inference. Его метрики нельзя выдавать за
+оценку качества на реальном потоке. Артефакт `joblib` следует загружать
+только если он создан этим проектом в доверенной среде.
 
 ### Опциональный LLM
 
@@ -114,10 +139,11 @@ python -m simulation.cli compare --seed 42
 ## CI
 
 GitHub Actions запускается для push в `main`, pull request и вручную.
-Workflow устанавливает проект с нуля, выполняет tests/demo/smoke, четыре
-simulation-сценария, проверяет воспроизводимость JSON, balance и safety-
-инварианты, а также рендерит Mermaid. Отчёты симуляции и SVG доступны в
-артефакте workflow в течение семи дней.
+Workflow устанавливает проект с нуля, выполняет tests/demo/smoke,
+обучает и запускает ML-классификатор, исполняет четыре simulation-сценария,
+проверяет воспроизводимость JSON, balance и safety-инварианты, а также
+рендерит Mermaid. ML-отчёт, отчёты симуляции и SVG доступны в артефакте
+workflow в течение семи дней.
 
 ## Demo
 
@@ -133,17 +159,19 @@ simulation-сценария, проверяет воспроизводимост
 
 ## Подход и границы
 
-Rules отвечают за PII/risk, lightweight baseline — за intent и confidence,
-retrieval — за контекст, генератор — только за черновик после safety-
-решения. Значение confidence основано на весах совпавших фраз и **не
-является откалиброванной вероятностью**.
+Rules отвечают за PII/risk, выбранный классификатор — за intent и
+confidence, retrieval — за контекст, генератор — только за черновик после
+safety-решения. В rules-режиме confidence основан на весах фраз; в
+ML-режиме это максимальный `predict_proba`. Ни одно значение не
+откалибровано на репрезентативных данных.
 
 PoC выполняется одним процессом, последовательно и на четырёх статьях.
 Внешний LLM по умолчанию выключен; адаптеры являются точкой расширения, а
-не production-интеграцией. Здесь нет обученной модели, настоящей
-async-очереди, межпроцессной идемпотентности, production storage или
-измеренного качества на реальных данных. Целевая архитектура отделяет hot
-path до 500 мс от асинхронных retrieval/generation.
+не production-интеграцией. Обучаемая модель является sparse baseline на
+небольшом синтетическом наборе, а не production-моделью. Здесь нет
+настоящей async-очереди, межпроцессной идемпотентности, production storage
+или измеренного качества на реальных данных. Целевая архитектура отделяет
+hot path до 500 мс от асинхронных retrieval/generation.
 
 ## Документация
 
