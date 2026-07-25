@@ -58,3 +58,12 @@ classification/retrieval срезы на накопившихся подтвер
 confidence/drift; support quality — overrides и разметка; knowledge team —
 актуальность статей; security/privacy — PII и unsafe actions; FinOps —
 лимиты LLM.
+
+## Связь с симуляцией
+
+[Модель СМО](queueing-model.md) выдаёт те же queue depth/lag, latency,
+throughput, utilization, fallback, timeout и loss-показатели в модельном
+времени. Production telemetry используется для калибровки arrival и
+service distributions, conditional probabilities и provider state.
+Расхождение replay с наблюдаемыми очередями — сигнал неверных assumptions,
+а не повод «подгонять» capacity по одному прогону.

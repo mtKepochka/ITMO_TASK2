@@ -26,6 +26,11 @@ shadow/suggest-пилоте, а не выводить из искусствен�
 
 Runtime не требует API-ключей, сети или скачивания моделей.
 
+Дополнительно реализована изолированная дискретно-событийная модель СМО:
+она сравнивает baseline, burst, деградацию LLM и incident-mode на уровне
+очередей и ограниченных ресурсов. Это исследование assumptions, а не
+нагрузочный тест основного pipeline.
+
 ## Быстрый запуск
 
 Требуется Python 3.11+.
@@ -37,6 +42,9 @@ python -m pip install -e '.[dev]'
 make test
 make demo
 make smoke
+make simulate
+make simulate-burst
+make simulate-compare
 ```
 
 После установки доступны отдельные команды:
@@ -51,6 +59,21 @@ python -m ticket_automation.cli demo --simulate-generator-failure
 CLI печатает категорию, эвристический confidence, risk, retrieval,
 решение, fallback и путь к audit log. По умолчанию аудит записывается в
 `audit/decisions.jsonl`; runtime-файл исключён из Git.
+
+Simulation CLI поддерживает фиксированный seed и JSON/CSV:
+
+```bash
+python -m simulation.cli baseline --seed 42
+python -m simulation.cli burst --seed 42 --output /tmp/burst.json
+python -m simulation.cli llm-degradation --seed 42
+python -m simulation.cli incident-mode --seed 42
+python -m simulation.cli compare --seed 42
+```
+
+По умолчанию отчёты сохраняются в игнорируемый каталог
+`artifacts/simulation/`. Для временных рядов передайте `--timeseries`,
+для одного из двух PNG-графиков — `--plots DIR` и установите
+`python -m pip install -e '.[plots]'`.
 
 ## Demo
 
@@ -84,6 +107,8 @@ PoC выполняется одним процессом, последовате
 - [Протокол оценки](docs/evaluation.md)
 - [Monitoring](docs/monitoring.md)
 - [Риски и эксплуатация](docs/risks-and-ops.md)
+- [Дискретно-событийная модель СМО](docs/queueing-model.md)
+- [Редактируемая схема СМО](docs/ticket-system.drawio)
 - [Использование AI](AI_USAGE.md)
 - [Рабочий журнал](WORKLOG.md)
 - [Самопроверка](SELF_REVIEW.md)

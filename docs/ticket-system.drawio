@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" modified="2026-07-25T18:00:00.000Z" agent="Codex" version="24.7.17">
+  <diagram id="ticket-queue-network" name="Ticket queueing network">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="source" value="Ticket source&lt;br&gt;piecewise Poisson&lt;br&gt;category mix" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="160" width="150" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="input" value="Input buffer / normalize&lt;br&gt;c=16, K=5000&lt;br&gt;LogNormal, timeout=—" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="230" y="150" width="190" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="risk" value="PII / risk scan&lt;br&gt;c=8, K=2000&lt;br&gt;LogNormal, timeout=—" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="460" y="150" width="180" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="policy" value="Classifier + policy&lt;br&gt;c=8, K=2000&lt;br&gt;LogNormal, timeout=—" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="680" y="150" width="190" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="retrieval" value="Retrieval&lt;br&gt;c=16, K=2000&lt;br&gt;LogNormal, timeout=—" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="920" y="150" width="170" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="llm" value="LLM generation&lt;br&gt;c=24, K=2000&lt;br&gt;LogNormal, timeout=8 s&lt;br&gt;healthy / degraded + CB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="140" width="190" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="validator" value="Output validator&lt;br&gt;c=8, K=1000&lt;br&gt;LogNormal, timeout=—" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1360" y="150" width="180" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="operator" value="Operator queue / service&lt;br&gt;c=1100, K=25000&lt;br&gt;LogNormal, timeout=—" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="720" y="390" width="210" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="fallback" value="Approved fallback&lt;br&gt;c=8, K=1000&lt;br&gt;LogNormal, timeout=—" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="390" width="190" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="autoSink" value="Auto-reply sink" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1380" y="390" width="150" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="operatorSink" value="Operator sink" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="750" y="560" width="150" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="fallbackSink" value="Fallback sink" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="560" width="150" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="lossSink" value="Technical loss sink" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="260" y="390" width="170" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="legend" value="Legend&lt;br&gt;c — parallel channels&lt;br&gt;K — finite waiting capacity&lt;br&gt;yellow — service node&lt;br&gt;green/purple — safe terminal path&lt;br&gt;red — degraded/failure path" style="shape=note;whiteSpace=wrap;html=1;size=15;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="40" y="650" width="310" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" edge="1" parent="1" source="source" target="input"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="input" target="risk"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="risk" target="policy"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e4" value="safe candidate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="policy" target="retrieval"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e5" value="P(retrieval hit | category)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="retrieval" target="llm"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e6" value="P(generator success | provider state)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="llm" target="validator"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e7" value="valid + allowlist" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="validator" target="autoSink"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e8" value="P(high risk / PII / low confidence | category)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="policy" target="operator"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e9" value="miss / reject / non-allowlist" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="retrieval" target="operator"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e10" value="failure / timeout / open CB + allowlist" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="llm" target="fallback"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e11" value="P(validation reject | category)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="validator" target="fallback"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e12" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="operator" target="operatorSink"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e13" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;" edge="1" parent="1" source="fallback" target="fallbackSink"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e14" value="input K exceeded" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#b85450;" edge="1" parent="1" source="input" target="lossSink"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e15" value="last safe queue full" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#b85450;" edge="1" parent="1" source="operator" target="lossSink"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
