@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
+from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
@@ -55,14 +56,23 @@ class KnowledgeArticle:
 
 
 class LexicalRetriever:
-    def __init__(self, articles: list[KnowledgeArticle]) -> None:
+    def __init__(
+        self,
+        articles: list[KnowledgeArticle],
+        *,
+        version: str = "in-memory",
+    ) -> None:
         self._articles = articles
+        self.version = version
 
     @classmethod
     def from_file(cls, path: str | Path) -> LexicalRetriever:
-        with Path(path).open(encoding="utf-8") as source:
-            values = json.load(source)
-        return cls([KnowledgeArticle.from_dict(value) for value in values])
+        raw = Path(path).read_bytes()
+        values = json.loads(raw)
+        return cls(
+            [KnowledgeArticle.from_dict(value) for value in values],
+            version=f"sha256:{sha256(raw).hexdigest()[:12]}",
+        )
 
     def search(self, query: str, category: Category) -> RetrievalResult:
         query_tokens = _tokens(query)

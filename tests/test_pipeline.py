@@ -54,6 +54,47 @@ def test_risky_payment_is_escalated_without_calling_generator(
     assert result.decision.draft_response is None
 
 
+def test_risky_payment_is_escalated_without_calling_retrieval(
+    tmp_path: Path,
+) -> None:
+    class ForbiddenRetriever:
+        def search(self, *args: object):
+            raise AssertionError("retrieval must not be called")
+
+    app = TicketPipeline(
+        retriever=ForbiddenRetriever(),  # type: ignore[arg-type]
+        audit=JsonlAudit(tmp_path / "audit.jsonl"),
+    )
+
+    result = app.process(
+        ticket("risky-before-retrieval", "Верните деньги на карту")
+    )
+
+    assert result.decision.action == "escalate"
+    assert result.retrieval.article_id is None
+
+
+def test_pii_is_escalated_before_retrieval(tmp_path: Path) -> None:
+    class ForbiddenRetriever:
+        def search(self, *args: object):
+            raise AssertionError("retrieval must not be called")
+
+    app = TicketPipeline(
+        retriever=ForbiddenRetriever(),  # type: ignore[arg-type]
+        audit=JsonlAudit(tmp_path / "audit.jsonl"),
+    )
+
+    result = app.process(
+        ticket(
+            "pii-before-retrieval",
+            "Общий сбой, приложение не открывается. user@example.com",
+        )
+    )
+
+    assert result.decision.action == "escalate"
+    assert result.risk.contains_pii is True
+
+
 def test_same_ticket_id_returns_same_decision_and_one_audit_record(
     tmp_path: Path,
 ) -> None:
@@ -75,6 +116,9 @@ def test_audit_has_decision_but_not_ticket_text_or_card(tmp_path: Path) -> None:
     record = json.loads(raw_audit)
     assert record["ticket_id"] == "audit-risk"
     assert record["action"] == "escalate"
+    assert record["pipeline_version"] == "0.2.0"
+    assert record["classifier_version"] == "rules-v1"
+    assert record["knowledge_base_version"].startswith("sha256:")
     assert "4111" not in raw_audit
     assert "С карты" not in raw_audit
 

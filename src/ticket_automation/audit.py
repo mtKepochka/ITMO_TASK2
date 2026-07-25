@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from . import __version__
 from .models import (
     ClassificationResult,
     Decision,
@@ -12,7 +13,7 @@ from .models import (
     RiskAssessment,
 )
 
-PIPELINE_VERSION = "0.1.0"
+PIPELINE_VERSION = __version__
 
 
 class JsonlAudit:
@@ -28,6 +29,8 @@ class JsonlAudit:
         retrieval: RetrievalResult,
         decision: Decision,
         latency_ms: float,
+        classifier_version: str,
+        knowledge_base_version: str,
     ) -> dict[str, Any]:
         record = {
             "timestamp": datetime.now(UTC).isoformat(),
@@ -46,6 +49,8 @@ class JsonlAudit:
             "fallback_used": decision.fallback_used,
             "latency_ms": round(latency_ms, 2),
             "pipeline_version": PIPELINE_VERSION,
+            "classifier_version": classifier_version,
+            "knowledge_base_version": knowledge_base_version,
         }
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8") as destination:

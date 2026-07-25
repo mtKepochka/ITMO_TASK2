@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from ticket_automation.cli import main
 
 
@@ -55,3 +57,62 @@ def test_cli_processes_ticket_file(tmp_path: Path, capsys) -> None:
     )
 
     assert '"reason": "low_classification_confidence"' in capsys.readouterr().out
+
+
+def test_cli_rejects_malformed_ticket_file_without_traceback(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    input_path = tmp_path / "tickets.json"
+    input_path.write_text("", encoding="utf-8")
+
+    with pytest.raises(SystemExit) as error:
+        main(["process", "--file", str(input_path)])
+
+    assert error.value.code == 2
+    assert "cannot load tickets" in capsys.readouterr().err
+
+
+def test_cli_rejects_unknown_classifier_from_environment(
+    monkeypatch,
+    capsys,
+) -> None:
+    monkeypatch.setenv("TICKET_CLASSIFIER", "bogus")
+
+    with pytest.raises(SystemExit) as error:
+        main(["process", "--text", "Общий сбой"])
+
+    assert error.value.code == 2
+    assert "TICKET_CLASSIFIER must be one of" in capsys.readouterr().err
+
+
+def test_cli_rejects_corrupted_classifier_artifact(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    model_path = tmp_path / "model.joblib"
+    model_path.write_bytes(b"not a joblib artifact")
+
+    with pytest.raises(SystemExit) as error:
+        main(
+            [
+                "process",
+                "--text",
+                "Общий сбой",
+                "--classifier",
+                "ml",
+                "--classifier-model",
+                str(model_path),
+            ]
+        )
+
+    assert error.value.code == 2
+    assert "cannot load classifier artifact" in capsys.readouterr().err
+
+
+def test_cli_prints_application_version(capsys) -> None:
+    with pytest.raises(SystemExit) as error:
+        main(["--version"])
+
+    assert error.value.code == 0
+    assert capsys.readouterr().out.strip().endswith("0.2.0")

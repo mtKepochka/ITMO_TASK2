@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from time import perf_counter
 from typing import Callable
@@ -11,14 +12,28 @@ from .generator import (
     DeterministicGenerator,
     ResponseGenerator,
 )
-from .models import ClassificationResult, ProcessingResult, Ticket
+from .models import (
+    ClassificationResult,
+    ProcessingResult,
+    RetrievalResult,
+    Ticket,
+)
 from .policy import decide
 from .retrieval import LexicalRetriever
 from .risk import assess_risk, redact_pii
 
-PROJECT_ROOT = Path(__file__).parents[2]
-DEFAULT_KB_PATH = PROJECT_ROOT / "data" / "knowledge_base.json"
-DEFAULT_AUDIT_PATH = PROJECT_ROOT / "audit" / "decisions.jsonl"
+PROJECT_ROOT = Path(
+    os.getenv("TICKET_PROJECT_ROOT", Path(__file__).parents[2])
+).resolve()
+DEFAULT_KB_PATH = Path(
+    os.getenv("TICKET_KB_PATH", PROJECT_ROOT / "data" / "knowledge_base.json")
+)
+DEFAULT_AUDIT_PATH = Path(
+    os.getenv(
+        "TICKET_AUDIT_PATH",
+        PROJECT_ROOT / "audit" / "decisions.jsonl",
+    )
+)
 
 
 class TicketPipeline:
@@ -34,6 +49,15 @@ class TicketPipeline:
         self.generator = generator or DeterministicGenerator()
         self.audit = audit or JsonlAudit(DEFAULT_AUDIT_PATH)
         self.classifier = classifier or classify
+        self.classifier_version = getattr(
+            self.classifier,
+            "version",
+            (
+                "rules-v1"
+                if self.classifier is classify
+                else type(self.classifier).__name__
+            ),
+        )
         self._processed: dict[str, ProcessingResult] = {}
 
     def process(self, ticket: Ticket) -> ProcessingResult:
@@ -43,17 +67,25 @@ class TicketPipeline:
         started = perf_counter()
         classification = self.classifier(ticket)
         risk = assess_risk(ticket, classification.category)
-        retrieval = self.retriever.search(
-            f"{ticket.subject} {ticket.text}", classification.category
+        sanitized_text = redact_pii(
+            f"{ticket.subject} {ticket.text}"
         )
+        retrieval = RetrievalResult(None, "", "", 0.0)
         decision = decide(classification, risk, retrieval)
+
+        if decision.action != "escalate":
+            retrieval = self.retriever.search(
+                sanitized_text,
+                classification.category,
+            )
+            decision = decide(classification, risk, retrieval)
 
         if decision.action != "escalate" and retrieval.article_id:
             fallback_used = False
             try:
                 draft = self.generator.generate(
                     ticket,
-                    redact_pii(f"{ticket.subject} {ticket.text}"),
+                    sanitized_text,
                     retrieval,
                 )
             except (RuntimeError, TimeoutError, ValueError):
@@ -92,6 +124,12 @@ class TicketPipeline:
             retrieval=retrieval,
             decision=decision,
             latency_ms=(perf_counter() - started) * 1000,
+            classifier_version=self.classifier_version,
+            knowledge_base_version=getattr(
+                self.retriever,
+                "version",
+                "in-memory",
+            ),
         )
         self._processed[ticket.id] = result
         return result

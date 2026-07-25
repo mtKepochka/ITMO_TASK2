@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence, cast
@@ -17,9 +18,24 @@ from .ml_classifier import TfidfIntentClassifier
 from .models import Category, Ticket
 from .pipeline import PROJECT_ROOT
 
-DEFAULT_DATASET = PROJECT_ROOT / "data" / "intent_dataset.jsonl"
-DEFAULT_MODEL = PROJECT_ROOT / "artifacts" / "models" / "intent-classifier.joblib"
-DEFAULT_REPORT = PROJECT_ROOT / "artifacts" / "ml" / "evaluation.json"
+DEFAULT_DATASET = Path(
+    os.getenv(
+        "TICKET_DATASET_PATH",
+        PROJECT_ROOT / "data" / "intent_dataset.jsonl",
+    )
+)
+DEFAULT_MODEL = Path(
+    os.getenv(
+        "TICKET_MODEL_PATH",
+        PROJECT_ROOT / "artifacts" / "models" / "intent-classifier.joblib",
+    )
+)
+DEFAULT_REPORT = Path(
+    os.getenv(
+        "TICKET_ML_REPORT_PATH",
+        PROJECT_ROOT / "artifacts" / "ml" / "evaluation.json",
+    )
+)
 
 
 @dataclass(frozen=True)

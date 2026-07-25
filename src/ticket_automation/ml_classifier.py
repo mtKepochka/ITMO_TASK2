@@ -49,10 +49,18 @@ class TfidfIntentClassifier:
         estimator: LogisticRegression,
         *,
         training_examples: int,
+        metadata: dict[str, object] | None = None,
     ) -> None:
         self.vectorizer = vectorizer
         self.estimator = estimator
         self.training_examples = training_examples
+        self.metadata = metadata or {}
+        dataset_hash = str(
+            self.metadata.get("dataset_sha256", "unversioned")
+        )
+        self.version = (
+            f"tfidf-logreg-v{MODEL_FORMAT_VERSION}:{dataset_hash[:12]}"
+        )
 
     @classmethod
     def train(
@@ -75,6 +83,7 @@ class TfidfIntentClassifier:
             vectorizer,
             estimator,
             training_examples=len(texts),
+            metadata={},
         )
 
     def classify(self, ticket: Ticket) -> ClassificationResult:
@@ -133,7 +142,12 @@ class TfidfIntentClassifier:
         source = Path(path)
         if not source.is_file():
             raise FileNotFoundError(f"classifier artifact not found: {source}")
-        payload = joblib.load(source)
+        try:
+            payload = joblib.load(source)
+        except Exception as error:
+            raise ValueError(
+                f"cannot load classifier artifact: {source}"
+            ) from error
         if (
             not isinstance(payload, dict)
             or payload.get("format_version") != MODEL_FORMAT_VERSION
@@ -149,4 +163,9 @@ class TfidfIntentClassifier:
             payload["vectorizer"],
             payload["estimator"],
             training_examples=int(payload["training_examples"]),
+            metadata=(
+                payload["metadata"]
+                if isinstance(payload.get("metadata"), dict)
+                else {}
+            ),
         )

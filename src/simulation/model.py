@@ -287,16 +287,17 @@ class Simulation:
                 reason = "low_confidence"
             else:
                 reason = "denylist"
-            yield from self._reject_to_safe_path(ticket, reason)
-            return
-
-        if self._during_incident(ticket):
-            yield from self._to_fallback(ticket)
+            self.metrics.reject_automation(reason)
+            yield from self._to_operator(ticket)
             return
 
         if ticket.operator_required:
             self.metrics.reject_automation("operator_required")
             yield from self._to_operator(ticket)
+            return
+
+        if self._during_incident(ticket):
+            yield from self._to_fallback(ticket)
             return
 
         retrieval_result = yield from self.nodes["retrieval"].serve()

@@ -7,13 +7,19 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Sequence
 
+from . import __version__
 from .audit import JsonlAudit
 from .generator import create_generator
 from .ml_classifier import TfidfIntentClassifier
 from .models import Ticket
 from .pipeline import PROJECT_ROOT, TicketPipeline
 
-DEMO_PATH = PROJECT_ROOT / "data" / "demo_tickets.json"
+DEMO_PATH = Path(
+    os.getenv(
+        "TICKET_DEMO_PATH",
+        PROJECT_ROOT / "data" / "demo_tickets.json",
+    )
+)
 
 
 def _load_tickets(path: Path) -> list[Ticket]:
@@ -21,7 +27,21 @@ def _load_tickets(path: Path) -> list[Ticket]:
         values = json.load(source)
     if isinstance(values, dict):
         values = [values]
-    return [Ticket.from_dict(value) for value in values]
+    if not isinstance(values, list):
+        raise ValueError("ticket file must contain an object or a list")
+    tickets = []
+    for index, value in enumerate(values):
+        if not isinstance(value, dict):
+            raise ValueError(f"ticket at index {index} must be an object")
+        try:
+            tickets.append(Ticket.from_dict(value))
+        except KeyError as error:
+            raise ValueError(
+                f"ticket at index {index} is missing field {error.args[0]}"
+            ) from error
+    if not tickets:
+        raise ValueError("ticket file must contain at least one ticket")
+    return tickets
 
 
 def _print_result(ticket_id: str, result: object) -> None:
@@ -63,6 +83,11 @@ def _add_generator_arguments(parser: argparse.ArgumentParser) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Safe ticket automation PoC")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     demo = subparsers.add_parser("demo", help="run bundled scenarios")
@@ -118,6 +143,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     classifier_name = args.classifier or os.getenv(
         "TICKET_CLASSIFIER", "rules"
     )
+    if classifier_name not in {"rules", "ml"}:
+        parser.error(
+            "TICKET_CLASSIFIER must be one of: rules, ml"
+        )
     classifier = None
     if classifier_name == "ml":
         model_path = args.classifier_model or Path(
@@ -140,10 +169,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
 
     if args.command == "demo":
-        tickets = _load_tickets(DEMO_PATH)
+        source_path = DEMO_PATH
     elif args.file:
-        tickets = _load_tickets(args.file)
+        source_path = args.file
     else:
+        if not args.text.strip():
+            parser.error("--text must not be empty")
         tickets = [
             Ticket(
                 id="cli-ticket",
@@ -153,6 +184,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 created_at=datetime.now(UTC).isoformat(),
             )
         ]
+        source_path = None
+
+    if source_path is not None:
+        try:
+            tickets = _load_tickets(source_path)
+        except (OSError, json.JSONDecodeError, ValueError) as error:
+            parser.error(f"cannot load tickets from {source_path}: {error}")
 
     for ticket in tickets:
         _print_result(ticket.id, pipeline.process(ticket))
