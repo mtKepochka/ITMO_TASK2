@@ -1,10 +1,10 @@
 .PHONY: test demo smoke
 
 test:
-	pytest
+	PYTHONPATH=src python -m pytest
 
 demo:
-	python -m ticket_automation.cli demo
+	PYTHONPATH=src python -m ticket_automation.cli demo
 
 smoke:
-	sh scripts/smoke_test.sh
+	PYTHONPATH=src sh scripts/smoke_test.sh

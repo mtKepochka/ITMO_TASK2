@@ -91,3 +91,20 @@ def test_generator_failure_uses_safe_fallback(tmp_path: Path) -> None:
     assert result.decision.action == "auto_reply"
     assert result.decision.fallback_used is True
     assert "проверяем состояние сервиса" in result.decision.draft_response
+
+
+def test_generator_failure_without_approved_template_escalates(
+    tmp_path: Path,
+) -> None:
+    app = pipeline(
+        tmp_path, generator=DeterministicGenerator(simulate_failure=True)
+    )
+
+    result = app.process(
+        ticket("fallback-general", "Подскажите, где найти мой тариф?")
+    )
+
+    assert result.decision.action == "escalate"
+    assert result.decision.fallback_used is True
+    assert result.decision.draft_response is None
+    assert result.decision.reason == "generator_failed_without_safe_fallback"
