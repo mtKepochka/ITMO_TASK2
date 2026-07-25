@@ -18,9 +18,10 @@
 
 ## Classical ML
 
-В PoC доступны два взаимозаменяемых intent-классификатора. Rules-default
-использует взвешенные фразы и эвристический confidence. Опциональный
-обучаемый baseline объединяет словные n-граммы `1–2` и символьные
+В PoC доступны два взаимозаменяемых intent-классификатора. Rules fallback
+использует взвешенные фразы и эвристический confidence. Стандартный demo
+и Docker используют обучаемый baseline, который объединяет словные
+n-граммы `1–2` и символьные
 `char_wb` n-граммы `3–5`, затем обучает многоклассовую Logistic
 Regression с `class_weight=balanced`. Положительные вклады признаков
 возвращаются как локальные сигналы решения.
@@ -28,7 +29,8 @@ Regression с `class_weight=balanced`. Положительные вклады �
 Команда `make train-ml` использует явные поля `train`/`test` в
 синтетическом JSONL, сохраняет SHA-256 набора вместе с моделью и формирует
 macro F1, поклассовый отчёт, confusion matrix, coverage и covered
-accuracy. `make demo-ml` проверяет загрузку артефакта и полный pipeline.
+accuracy. `make demo` проверяет загрузку артефакта и полный pipeline;
+`make demo-rules` сохраняет быстрый сценарий без ML.
 На текущих 56 train и 21 test примерах macro F1 равен `0.7541`.
 Evaluation строит risk–coverage curve и выбирает sanity-порог с минимум
 30% coverage, максимизируя covered accuracy, затем coverage. Выбранный
@@ -68,16 +70,23 @@ scikit-learn.
 
 ## Retrieval
 
-PoC считает пересечение нормализованных токенов с четырьмя локальными
-статьями и добавляет небольшой бонус за категорию. Он возвращает ID,
-текст и объяснимый score; слабое совпадение запрещает auto-reply.
+Lexical fallback считает пересечение нормализованных токенов с четырьмя
+локальными статьями и добавляет небольшой бонус за категорию. Optional E5
+retriever использует `query:`/`passage:` embeddings, cosine similarity,
+top-1 margin и обязательное совпадение статьи с intent. Модель
+`intfloat/multilingual-e5-small` фиксируется конкретной revision; модель и
+KB embeddings кешируются локально.
 
-Следующий baseline — BM25 с фильтром по актуальной версии, продукту и
-языку. Embeddings добавляются после анализа no-hit и synonym errors.
-Hybrid retrieval объединяет lexical и dense кандидатов; reranker нужен
-только если Recall@k достаточен, но порядок кандидатов остаётся проблемой.
-Все варианты должны уметь вернуть `no hit`, а не подставить нерелевантную
-статью.
+Недоступность dependency/checkpoint и runtime-ошибка encoder явно
+переводят retrieval на lexical с `fallback_used=true`. Порог E5 пока
+sanity-параметр без оценки на реальном потоке. Semantic retrieval
+проверяется unit-тестами через encoder contract; скачивание тяжёлой модели
+не является обязательным условием CI.
+
+Следующий эксперимент — сравнить lexical, E5 и BM25 с фильтром по
+актуальной версии, продукту и языку. Reranker нужен только если Recall@k
+достаточен, но порядок кандидатов остаётся проблемой. Все варианты должны
+уметь вернуть `no hit`.
 
 ## LLM
 

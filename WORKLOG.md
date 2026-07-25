@@ -42,3 +42,10 @@
 18. Classification и risk scan распараллелены под общим deadline;
     idempotency усилена single-flight, а ML-артефакт получил явно
     ограниченный sanity threshold/coverage curve.
+19. Добавлен optional semantic retrieval с pinned E5 revision, кешированием
+    KB embeddings, offline-режимом и наблюдаемым lexical fallback.
+20. Стандартный demo и контейнер переведены на обучаемый ML baseline;
+    rules оставлен явным быстрым fallback.
+21. Продуктовый контур формализован через backlog гипотез, controlled
+    pilot, sensitivity formula, guardrails и stop-критерии без заявления
+    неподтверждённого ROI.

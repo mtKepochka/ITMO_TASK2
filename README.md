@@ -15,10 +15,11 @@ shadow/suggest-пилоте, а не выводить из искусствен�
 
 ## Что реализовано
 
-- два классификатора семи intent-категорий: rules по умолчанию и
-  обучаемый TF-IDF + Logistic Regression;
+- два классификатора семи intent-категорий: обучаемый TF-IDF + Logistic
+  Regression в стандартном demo/контейнере и rules как offline fallback;
 - отдельные rules для email, телефона, номера карты и high-risk фраз;
-- локальная JSON-база знаний и lexical retrieval;
+- локальная JSON-база знаний, lexical retrieval и optional pinned E5
+  semantic retrieval с кешем и fallback;
 - policy с denylist, узкой allowlist и abstention;
 - versioned rollout с suggest-by-default, kill switch, allowlist и canary;
 - детерминированный grounded-ответ и безопасный fallback при отказе;
@@ -29,7 +30,7 @@ shadow/suggest-пилоте, а не выводить из искусствен�
 - параллельные classification/risk scorers с общим deadline 500 мс.
 
 Runtime не требует API-ключей, сети или скачивания моделей.
-Текущая версия приложения — `0.3.0`.
+Текущая версия приложения — `0.4.0`.
 
 Дополнительно реализована изолированная дискретно-событийная модель СМО:
 она сравнивает baseline, burst, деградацию LLM и incident-mode на уровне
@@ -46,7 +47,10 @@ python -m venv .venv
 python -m pip install -e '.[dev]'
 make test
 make demo
+make demo-rules
 make demo-auto
+python -m pip install -e '.[semantic]'
+make demo-semantic
 make api
 make benchmark
 make smoke
@@ -66,7 +70,10 @@ python -m ticket_automation.cli process --file data/demo_tickets.json
 python -m ticket_automation.cli demo --simulate-generator-failure
 ```
 
-CLI печатает категорию, эвристический confidence, risk, retrieval,
+`make demo` сначала воспроизводимо обучает ML baseline и запускает его в
+suggest-only режиме. `make demo-rules` не требует ML-артефакта.
+
+CLI печатает категорию, confidence, risk, retrieval source/fallback,
 решение, fallback и путь к audit log. По умолчанию аудит записывается в
 `audit/decisions.jsonl`; runtime-файл исключён из Git.
 
@@ -82,8 +89,8 @@ OpenAPI доступен на `/docs`, health — на `/api/v1/health`. Кон�
 make container-demo
 ```
 
-Для контейнерного ML-сценария модель обучается и сохраняется в именованном
-volume:
+Контейнер содержит обученный при сборке ML baseline и использует его по
+умолчанию. Для явного переобучения с сохранением модели в volume:
 
 ```bash
 make container-train-ml
@@ -121,6 +128,30 @@ python -m ticket_automation.cli process \
 в артефакте модели. Сейчас это даёт ненулевую selective coverage, но
 порог подобран на том же маленьком синтетическом holdout и не является
 доказательством качества.
+
+### Опциональный semantic retrieval
+
+После установки optional extra можно включить E5:
+
+```bash
+python -m pip install -e '.[semantic]'
+python -m ticket_automation.cli process \
+  --classifier ml \
+  --classifier-model artifacts/models/intent-classifier.joblib \
+  --retriever e5 \
+  --text "Экран авторизации постоянно отвергает мои данные"
+```
+
+Используется `intfloat/multilingual-e5-small` с зафиксированной ревизией
+`614241f622f53c4eeff9890bdc4f31cfecc418b3`. Модель и версионированные
+KB embeddings кешируются в `artifacts/embeddings/`. Для запуска только из
+локального cache передайте `--semantic-offline`.
+
+Если optional dependency, сеть или checkpoint недоступны, runtime явно
+помечает `retrieval.fallback_used=true` и использует lexical retriever.
+Runtime-ошибка encoder имеет тот же fallback. Semantic score и margin
+остаются некалиброванными sanity-порогами; E5 не меняет safety-policy и
+не расширяет auto-reply allowlist.
 
 ### Опциональный LLM
 
@@ -201,8 +232,9 @@ Workflow устанавливает проект с нуля, выполняет
 Rules отвечают за PII/risk, выбранный классификатор — за intent и
 confidence, retrieval — за контекст, генератор — только за черновик после
 safety-решения. В rules-режиме confidence основан на весах фраз; в
-ML-режиме это максимальный `predict_proba`. Ни одно значение не
-откалибровано на репрезентативных данных.
+ML-режиме это максимальный `predict_proba`. CLI без явной конфигурации
+сохраняет быстрый rules fallback, а `make demo` и Docker используют ML.
+Ни одно значение не откалибровано на репрезентативных данных.
 
 PoC выполняется одним процессом и на четырёх статьях. Preprocessing
 нормализует HTML/Unicode и маскирует PII до классификатора; classification
@@ -218,6 +250,7 @@ hot path до 500 мс от асинхронных retrieval/generation.
 ## Документация
 
 - [Архитектура](docs/architecture.md)
+- [Продуктовая гипотеза и пилот](docs/product.md)
 - [ML, retrieval и LLM](docs/ml.md)
 - [Протокол оценки](docs/evaluation.md)
 - [Monitoring](docs/monitoring.md)

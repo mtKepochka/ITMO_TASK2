@@ -2,4 +2,4 @@ import ticket_automation
 
 
 def test_package_is_importable() -> None:
-    assert ticket_automation.__version__ == "0.3.0"
+    assert ticket_automation.__version__ == "0.4.0"

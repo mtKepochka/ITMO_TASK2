@@ -21,6 +21,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8,<9"]
 plots = ["matplotlib>=3.8,<4"]
+semantic = ["sentence-transformers>=5.1,<6"]
 
 [project.scripts]
 ticket-automation = "ticket_automation.cli:main"

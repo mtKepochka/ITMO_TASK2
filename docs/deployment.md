@@ -3,8 +3,8 @@
 Проект предоставляет CLI и локальный FastAPI/dashboard, но не является
 production-сервисом. Deployment означает сборку воспроизводимого образа и
 запуск нужной команды в контейнере. Образ работает от непривилегированного
-пользователя, а audit, ML-модель и evaluation report хранятся в отдельном
-Docker volume.
+пользователя. Базовая ML-модель входит в immutable-образ; audit и
+артефакты явного переобучения можно хранить в отдельном Docker volume.
 
 ## Быстрый запуск
 
@@ -15,9 +15,10 @@ make container-demo
 ```
 
 Команда собирает immutable-тег вида
-`ticket-automation:0.3.0-<git-revision>`, а также удобные указатели
-`ticket-automation:0.3.0` и `ticket-automation:latest`, затем запускает
-demo. Для ML-пути:
+`ticket-automation:0.4.0-<git-revision>`, а также удобные указатели
+`ticket-automation:0.4.0` и `ticket-automation:latest`, затем запускает
+demo. ML baseline обучается во время сборки теми же версиями зависимостей
+и используется контейнером по умолчанию. Для явного переобучения в volume:
 
 ```bash
 make container-train-ml
@@ -25,17 +26,23 @@ make container-demo-ml
 ```
 
 Compose использует именованный volume `ticket-automation_ticket-runtime`.
-Поэтому модель, отчёт и audit переживают пересоздание контейнера и не
-попадают в Git. Посмотреть версию без запуска demo:
+Поэтому переобученная модель, отчёт и audit переживают пересоздание
+контейнера и не попадают в Git. Посмотреть версию без запуска demo:
 
 ```bash
-docker run --rm ticket-automation:0.3.0 --version
+docker run --rm ticket-automation:0.4.0 --version
 ```
 
 Долгоживущий demo API запускается командой `make container-api`; Makefile
 передаёт Compose вычисленные `TICKET_TAG`, `TICKET_VERSION` и
 `TICKET_REVISION`. Порт по умолчанию — `8000`, dashboard находится на `/`,
 OpenAPI — на `/docs`, health — на `/api/v1/health`.
+
+Semantic extra намеренно не входит в базовый образ из-за размера PyTorch.
+Для локального эксперимента устанавливается `.[semantic]`; модель и KB
+embeddings попадают в игнорируемый `artifacts/embeddings/`. Production
+образ с encoder должен собираться отдельно, использовать тот же pinned
+revision и проходить warm latency/memory benchmark.
 
 ## Версионность
 
@@ -78,7 +85,7 @@ make update-ml
 tags, поэтому быстрый rollback выполняется запуском предыдущего тега:
 
 ```bash
-docker run --rm ticket-automation:0.1.0-<previous-revision> demo
+docker run --rm ticket-automation:0.4.0-<previous-revision> demo
 ```
 
 В production этот процесс заменяется публикацией immutable image digest в

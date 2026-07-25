@@ -16,7 +16,7 @@
 | Задержка | p50/p95/p99 hot path и end-to-end по этапам |
 | Вход | category, channel/language mix, text length, PII rate |
 | Решения | confidence distribution, abstention, action/route distribution |
-| Retrieval | no-hit rate, score distribution, article/version frequency |
+| Retrieval | source/fallback, no-hit, score distribution, article/model/KB version |
 | Generation | invalid output, PII block, token usage, стоимость |
 | Delayed quality | override, acceptance/edit, reopen, SLA и CSAT |
 

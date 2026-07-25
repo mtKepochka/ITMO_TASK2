@@ -50,12 +50,12 @@ jobs:
 
       - name: Run ticket PoC
         run: |
-          make demo
+          make demo-rules
           make smoke
 
       - name: Train and exercise ML classifier
         run: |
-          make demo-ml
+          make demo
           python - <<'PY'
           import json
           from pathlib import Path
@@ -70,6 +70,22 @@ jobs:
           assert report["coverage"] >= 0.3
           assert report["covered_accuracy"] >= 0.9
           PY
+
+      - name: Check semantic offline fallback
+        run: |
+          python -m ticket_automation.cli process \
+            --text "Приложение не открывается. Это общий сбой?" \
+            --classifier ml \
+            --classifier-model artifacts/models/intent-classifier.joblib \
+            --retriever e5 \
+            --semantic-offline \
+            --embedding-cache /tmp/ticket-embedding-cache \
+            --audit /tmp/semantic-fallback-audit.jsonl \
+            > /tmp/semantic-fallback.json \
+            2> /tmp/semantic-fallback.err
+          grep -q 'using lexical fallback' /tmp/semantic-fallback.err
+          grep -q '"source": "lexical"' /tmp/semantic-fallback.json
+          grep -q '"fallback_used": true' /tmp/semantic-fallback.json
 
       - name: Run concurrent pipeline benchmark
         run: |

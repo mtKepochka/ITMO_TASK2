@@ -27,6 +27,10 @@ services:
     <<: *ticket-service
     entrypoint: ["python", "-m", "ticket_automation.training"]
     command: ["train"]
+    environment:
+      TICKET_MODEL_PATH: /runtime/models/intent-classifier.joblib
+      TICKET_CLASSIFIER_MODEL: /runtime/models/intent-classifier.joblib
+      TICKET_ML_REPORT_PATH: /runtime/ml/evaluation.json
 
   demo-ml:
     <<: *ticket-service

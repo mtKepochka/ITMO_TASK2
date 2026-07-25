@@ -2,6 +2,23 @@
 
 Формат основан на Keep a Changelog, версии используют Semantic Versioning.
 
+## 0.4.0 — 2026-07-25
+
+### Added
+
+- optional E5 semantic retriever с pinned model revision;
+- локальный cache модели и версионированных KB embeddings;
+- lexical fallback с явными source/fallback полями в результате и audit;
+- semantic offline fallback check в CI;
+- продуктовый backlog, pilot design, guardrails и stop-критерии.
+
+### Changed
+
+- стандартный `make demo` использует обучаемый ML-классификатор;
+- Docker image содержит воспроизводимо обученный ML baseline и запускает
+  его по умолчанию;
+- rules-сценарий сохранён отдельной командой `make demo-rules`.
+
 ## 0.3.0 — 2026-07-25
 
 ### Added

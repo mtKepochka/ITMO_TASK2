@@ -4,8 +4,8 @@ VERSION := $(shell PYTHONPATH=src $(PYTHON) -c "import ticket_automation; print(
 REVISION := $(shell git rev-parse --short=12 HEAD 2>/dev/null || echo unknown)
 DEPLOY_TAG := $(VERSION)-$(REVISION)
 
-.PHONY: test demo demo-auto api benchmark benchmark-fault smoke train-ml demo-ml \
-	simulate simulate-burst simulate-compare \
+.PHONY: test demo demo-rules demo-auto demo-ml demo-semantic api benchmark \
+	benchmark-fault smoke train-ml simulate simulate-burst simulate-compare \
 	docker-build container-demo container-api container-train-ml \
 	container-demo-ml deploy \
 	deploy-ml update update-ml
@@ -13,12 +13,27 @@ DEPLOY_TAG := $(VERSION)-$(REVISION)
 test:
 	PYTHONPATH=src $(PYTHON) -m pytest
 
-demo:
+demo: train-ml
+	PYTHONPATH=src $(PYTHON) -m ticket_automation.cli demo \
+		--classifier ml \
+		--classifier-model artifacts/models/intent-classifier.joblib
+
+demo-rules:
 	PYTHONPATH=src $(PYTHON) -m ticket_automation.cli demo
 
-demo-auto:
+demo-auto: train-ml
 	PYTHONPATH=src $(PYTHON) -m ticket_automation.cli demo \
+		--classifier ml \
+		--classifier-model artifacts/models/intent-classifier.joblib \
 		--rollout-config config/rollout.auto-demo.json
+
+demo-ml: demo
+
+demo-semantic: train-ml
+	PYTHONPATH=src $(PYTHON) -m ticket_automation.cli demo \
+		--classifier ml \
+		--classifier-model artifacts/models/intent-classifier.joblib \
+		--retriever e5
 
 api:
 	PYTHONPATH=src $(PYTHON) -m ticket_automation.api
@@ -36,12 +51,6 @@ smoke:
 
 train-ml:
 	PYTHONPATH=src $(PYTHON) -m ticket_automation.training train
-
-demo-ml: train-ml
-	PYTHONPATH=src $(PYTHON) -m ticket_automation.cli demo \
-		--classifier ml \
-		--classifier-model artifacts/models/intent-classifier.joblib \
-		--rollout-config config/rollout.auto-demo.json
 
 simulate:
 	PYTHONPATH=src $(PYTHON) -m simulation.cli baseline --seed 42

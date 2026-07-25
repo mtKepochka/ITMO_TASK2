@@ -12,3 +12,4 @@ audit/*.jsonl
 artifacts/simulation/
 artifacts/ml/
 artifacts/models/
+artifacts/embeddings/

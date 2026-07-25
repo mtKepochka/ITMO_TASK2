@@ -44,8 +44,9 @@ holdout.
 
 ## Retrieval
 
-На наборах `(ticket, допустимые article IDs)` измеряются Recall@1,
-Recall@3, MRR, no-hit rate и incorrect-context rate. Последняя метрика
+На одних наборах `(ticket, допустимые article IDs)` сравниваются lexical,
+pinned E5 и следующие baselines. Измеряются Recall@1, Recall@3, MRR,
+no-hit rate и incorrect-context rate. Последняя метрика
 особенно важна: уверенный неверный контекст хуже честного no-hit.
 Результаты режутся по языку, новой/устаревшей статье и категории. При
 изменении базы тест повторяется с её новой версией.

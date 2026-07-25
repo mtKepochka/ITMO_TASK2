@@ -26,7 +26,7 @@ from .models import (
 )
 from .policy import ROUTES, decide
 from .preprocessing import prepare_ticket
-from .retrieval import LexicalRetriever
+from .retrieval import KnowledgeRetriever, LexicalRetriever
 from .risk import apply_category_risk, assess_risk
 from .rollout import RolloutConfig
 
@@ -54,7 +54,7 @@ class TicketPipeline:
     def __init__(
         self,
         *,
-        retriever: LexicalRetriever | None = None,
+        retriever: KnowledgeRetriever | None = None,
         generator: ResponseGenerator | None = None,
         audit: JsonlAudit | None = None,
         classifier: Callable[[Ticket], ClassificationResult] | None = None,
@@ -256,6 +256,11 @@ class TicketPipeline:
                 )
 
         decision = self._apply_rollout(ticket.id, decision)
+        retriever_version = getattr(
+            self.retriever,
+            "version",
+            type(self.retriever).__name__,
+        )
         result = ProcessingResult(
             classification=classification,
             risk=risk,
@@ -264,6 +269,8 @@ class TicketPipeline:
             audit_path=str(self.audit.path),
             fast_path_ms=fast_path_ms,
             technical_errors=tuple(technical_errors),
+            classifier_version=self.classifier_version,
+            retriever_version=retriever_version,
         )
         self.audit.write(
             ticket_id=ticket.id,
@@ -275,9 +282,14 @@ class TicketPipeline:
             classifier_version=self.classifier_version,
             knowledge_base_version=getattr(
                 self.retriever,
-                "version",
-                "in-memory",
+                "knowledge_base_version",
+                getattr(
+                    self.retriever,
+                    "version",
+                    type(self.retriever).__name__,
+                ),
             ),
+            retriever_version=retriever_version,
         )
         return result
 

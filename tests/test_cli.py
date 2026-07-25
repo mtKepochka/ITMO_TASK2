@@ -110,9 +110,48 @@ def test_cli_rejects_corrupted_classifier_artifact(
     assert "cannot load classifier artifact" in capsys.readouterr().err
 
 
+def test_cli_semantic_mode_falls_back_without_model(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    from ticket_automation.retrieval import SemanticRetrieverUnavailable
+
+    def unavailable(**kwargs):
+        raise SemanticRetrieverUnavailable("not cached")
+
+    monkeypatch.setattr(
+        "ticket_automation.retrieval.load_sentence_transformer",
+        unavailable,
+    )
+
+    assert (
+        main(
+            [
+                "process",
+                "--text",
+                "Приложение не открывается. Это общий сбой?",
+                "--retriever",
+                "e5",
+                "--semantic-offline",
+                "--embedding-cache",
+                str(tmp_path / "embeddings"),
+                "--audit",
+                str(tmp_path / "audit.jsonl"),
+            ]
+        )
+        == 0
+    )
+
+    captured = capsys.readouterr()
+    assert "using lexical fallback" in captured.err
+    assert '"source": "lexical"' in captured.out
+    assert '"fallback_used": true' in captured.out
+
+
 def test_cli_prints_application_version(capsys) -> None:
     with pytest.raises(SystemExit) as error:
         main(["--version"])
 
     assert error.value.code == 0
-    assert capsys.readouterr().out.strip().endswith("0.3.0")
+    assert capsys.readouterr().out.strip().endswith("0.4.0")

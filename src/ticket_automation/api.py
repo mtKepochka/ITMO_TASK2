@@ -15,9 +15,14 @@ from pydantic import BaseModel, Field
 
 from . import __version__
 from .audit import JsonlAudit
+from .ml_classifier import TfidfIntentClassifier
 from .models import ProcessingResult, Ticket
 from .pipeline import PROJECT_ROOT, TicketPipeline
-from .retrieval import LexicalRetriever
+from .retrieval import (
+    DEFAULT_E5_MODEL,
+    DEFAULT_E5_REVISION,
+    create_retriever,
+)
 
 
 class TicketRequest(BaseModel):
@@ -153,15 +158,55 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        classifier_name = os.getenv("TICKET_CLASSIFIER", "rules")
+        classifier = None
+        if classifier_name == "ml":
+            classifier = TfidfIntentClassifier.load_trusted(
+                Path(
+                    os.getenv(
+                        "TICKET_CLASSIFIER_MODEL",
+                        project_root
+                        / "artifacts"
+                        / "models"
+                        / "intent-classifier.joblib",
+                    )
+                )
+            )
+        elif classifier_name != "rules":
+            raise ValueError("TICKET_CLASSIFIER must be one of: rules, ml")
+
+        retriever_name = os.getenv("TICKET_RETRIEVER", "lexical")
+        retriever, retriever_warning = create_retriever(
+            retriever_name,
+            knowledge_base_path=project_root / "data" / "knowledge_base.json",
+            cache_directory=Path(
+                os.getenv(
+                    "TICKET_EMBEDDING_CACHE",
+                    project_root / "artifacts" / "embeddings",
+                )
+            ),
+            model_name=os.getenv(
+                "TICKET_EMBEDDING_MODEL",
+                DEFAULT_E5_MODEL,
+            ),
+            revision=os.getenv(
+                "TICKET_EMBEDDING_REVISION",
+                DEFAULT_E5_REVISION,
+            ),
+            local_files_only=os.getenv(
+                "TICKET_EMBEDDING_OFFLINE", ""
+            ).lower()
+            in {"1", "true", "yes"},
+        )
         app.state.pipeline = TicketPipeline(
             audit=JsonlAudit(effective_audit),
-            retriever=LexicalRetriever.from_file(
-                project_root / "data" / "knowledge_base.json"
-            ),
+            classifier=classifier,
+            retriever=retriever,
             rollout_path=effective_rollout,
             fast_path_deadline_ms=deadline,
         )
         app.state.metrics = RuntimeMetrics()
+        app.state.retriever_warning = retriever_warning
         yield
         app.state.pipeline.close()
 
@@ -182,6 +227,11 @@ def create_app(
             "status": "ok",
             "version": __version__,
             "rollout_version": request.app.state.pipeline.rollout.version,
+            "classifier_version": (
+                request.app.state.pipeline.classifier_version
+            ),
+            "retriever_version": request.app.state.pipeline.retriever.version,
+            "retriever_warning": request.app.state.retriever_warning,
         }
 
     @application.get("/api/v1/metrics", tags=["operations"])

@@ -3,16 +3,22 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Sequence
 
 from . import __version__
 from .audit import JsonlAudit
 from .generator import create_generator
 from .ml_classifier import TfidfIntentClassifier
 from .models import Ticket
-from .pipeline import PROJECT_ROOT, TicketPipeline
+from .pipeline import DEFAULT_KB_PATH, PROJECT_ROOT, TicketPipeline
+from .retrieval import (
+    DEFAULT_E5_MODEL,
+    DEFAULT_E5_REVISION,
+    create_retriever,
+)
 
 DEMO_PATH = Path(
     os.getenv(
@@ -83,6 +89,29 @@ def _add_generator_arguments(parser: argparse.ArgumentParser) -> None:
         "--rollout-config",
         type=Path,
         help="versioned rollout JSON; defaults to TICKET_ROLLOUT_CONFIG",
+    )
+    parser.add_argument(
+        "--retriever",
+        choices=("lexical", "e5"),
+        help="knowledge retriever; defaults to TICKET_RETRIEVER or lexical",
+    )
+    parser.add_argument(
+        "--embedding-model",
+        help="semantic model name; defaults to the pinned E5 model",
+    )
+    parser.add_argument(
+        "--embedding-revision",
+        help="semantic model revision; defaults to a pinned commit",
+    )
+    parser.add_argument(
+        "--embedding-cache",
+        type=Path,
+        help="model and KB embedding cache directory",
+    )
+    parser.add_argument(
+        "--semantic-offline",
+        action="store_true",
+        help="load the semantic model only from the local cache",
     )
 
 
@@ -167,11 +196,50 @@ def main(argv: Sequence[str] | None = None) -> int:
             classifier = TfidfIntentClassifier.load_trusted(model_path)
         except (FileNotFoundError, ValueError) as error:
             parser.error(f"{error}; run `make train-ml` first")
+
+    retriever_name = args.retriever or os.getenv(
+        "TICKET_RETRIEVER", "lexical"
+    )
+    if retriever_name not in {"lexical", "e5"}:
+        parser.error("TICKET_RETRIEVER must be one of: lexical, e5")
+    embedding_model = (
+        args.embedding_model
+        or os.getenv("TICKET_EMBEDDING_MODEL")
+        or DEFAULT_E5_MODEL
+    )
+    embedding_revision = (
+        args.embedding_revision
+        or os.getenv("TICKET_EMBEDDING_REVISION")
+        or DEFAULT_E5_REVISION
+    )
+    embedding_cache = args.embedding_cache or Path(
+        os.getenv(
+            "TICKET_EMBEDDING_CACHE",
+            PROJECT_ROOT / "artifacts" / "embeddings",
+        )
+    )
+    offline = args.semantic_offline or os.getenv(
+        "TICKET_EMBEDDING_OFFLINE", ""
+    ).lower() in {"1", "true", "yes"}
+    try:
+        retriever, retriever_warning = create_retriever(
+            retriever_name,
+            knowledge_base_path=DEFAULT_KB_PATH,
+            cache_directory=embedding_cache,
+            model_name=embedding_model,
+            revision=embedding_revision,
+            local_files_only=offline,
+        )
+    except (OSError, ValueError) as error:
+        parser.error(str(error))
+    if retriever_warning:
+        print(retriever_warning, file=sys.stderr)
     try:
         pipeline = TicketPipeline(
             generator=generator,
             audit=audit,
             classifier=classifier,
+            retriever=retriever,
             rollout_path=args.rollout_config,
         )
     except ValueError as error:

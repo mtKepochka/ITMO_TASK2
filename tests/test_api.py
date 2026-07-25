@@ -22,7 +22,9 @@ def test_api_exposes_health_process_result_and_metrics(tmp_path: Path) -> None:
         metrics = client.get("/api/v1/metrics")
 
     assert health.status_code == 200
-    assert health.json()["version"] == "0.3.0"
+    assert health.json()["version"] == "0.4.0"
+    assert health.json()["classifier_version"] == "rules-v1"
+    assert health.json()["retriever_version"].startswith("sha256:")
     assert response.status_code == 200
     assert response.json()["result"]["action"] == "suggest_to_agent"
     assert stored.status_code == 200

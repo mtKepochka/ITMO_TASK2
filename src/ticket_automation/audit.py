@@ -33,6 +33,7 @@ class JsonlAudit:
         latency_ms: float,
         classifier_version: str,
         knowledge_base_version: str,
+        retriever_version: str,
     ) -> dict[str, Any]:
         record = {
             "timestamp": datetime.now(UTC).isoformat(),
@@ -45,6 +46,8 @@ class JsonlAudit:
             "risk_reasons": list(risk.reasons),
             "retrieval_article_id": retrieval.article_id,
             "retrieval_score": retrieval.score,
+            "retrieval_source": retrieval.source,
+            "retrieval_fallback_used": retrieval.fallback_used,
             "action": decision.action,
             "reason": decision.reason,
             "route": decision.route,
@@ -55,6 +58,7 @@ class JsonlAudit:
             "pipeline_version": PIPELINE_VERSION,
             "classifier_version": classifier_version,
             "knowledge_base_version": knowledge_base_version,
+            "retriever_version": retriever_version,
         }
         with self._lock:
             self.path.parent.mkdir(parents=True, exist_ok=True)

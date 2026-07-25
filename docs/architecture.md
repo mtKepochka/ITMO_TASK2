@@ -3,8 +3,9 @@
 ## Границы PoC
 
 В репозитории реализован один локальный FastAPI/CLI-процесс: preprocessing,
-параллельные rules/ML classification и risk scan, lexical retrieval,
-policy, rollout gate, генератор и JSONL-аудит. ML-вариант обучается
+параллельные rules/ML classification и risk scan, lexical или optional
+E5 semantic retrieval, policy, rollout gate, генератор и JSONL-аудит.
+ML-вариант обучается
 отдельно и подставляется через тот же callable-интерфейс. Опциональные
 Ollama/OpenRouter-адаптеры по умолчанию выключены. PoC не имитирует брокер
 или распределённое хранилище; целевая схема показана ниже.
@@ -18,7 +19,7 @@ flowchart LR
     R --> P
     P -->|risk / abstention| O[Operator queue]
     P -->|safe candidate| Q[Async work queue]
-    Q --> K[Knowledge retrieval]
+    Q --> K[Lexical / pinned E5 retrieval]
     K --> G[Guarded generator]
     G --> V[Output validation]
     V --> RG{Versioned rollout gate}
@@ -57,6 +58,11 @@ Retrieval вызывается только после раннего safety gat
 локальный validator отклоняет PII, пустой/слишком длинный output и
 несколько классов запрещённых обещаний. До production этого недостаточно:
 нужны schema/groundedness checks и асинхронный execution.
+
+Semantic-режим фиксирует model revision, кеширует модель и KB embeddings,
+проверяет совпадение предложенной статьи с intent и умеет отказаться по
+similarity/margin. Недоступность или runtime-ошибка encoder включает
+наблюдаемый lexical fallback; наличие E5 не ослабляет rollout gate.
 
 Агрегированное поведение этой логической сети при ограниченных capacities
 исследует отдельная [дискретно-событийная модель СМО](queueing-model.md).

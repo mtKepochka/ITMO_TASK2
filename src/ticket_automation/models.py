@@ -55,6 +55,8 @@ class RetrievalResult:
     title: str
     content: str
     score: float
+    source: str = "lexical"
+    fallback_used: bool = False
 
 
 @dataclass(frozen=True)
@@ -83,6 +85,8 @@ class ProcessingResult:
     audit_path: str
     fast_path_ms: float = 0.0
     technical_errors: tuple[str, ...] = ()
+    classifier_version: str = "unknown"
+    retriever_version: str = "unknown"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -96,9 +100,13 @@ class ProcessingResult:
                 "article_id": self.retrieval.article_id,
                 "title": self.retrieval.title,
                 "score": self.retrieval.score,
+                "source": self.retrieval.source,
+                "fallback_used": self.retrieval.fallback_used,
             },
             **self.decision.to_dict(),
             "audit_path": self.audit_path,
             "fast_path_ms": self.fast_path_ms,
             "technical_errors": list(self.technical_errors),
+            "classifier_version": self.classifier_version,
+            "retriever_version": self.retriever_version,
         }

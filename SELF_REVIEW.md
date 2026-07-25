@@ -4,10 +4,10 @@
 
 Фразовые веса и lexical retrieval запускаются без сети, легко объясняются
 в audit и позволяют проверить главный тезис: safety-policy не зависит от
-генератора. Дополнительно реализован TF-IDF + Logistic Regression baseline,
-но он выключен по умолчанию: 77 синтетических фраз проверяют инженерный
-контур, а не качество. Следующий честный шаг — сравнение с rules и Linear
-SVM на временном split реальных данных.
+генератора. Стандартный demo и Docker используют TF-IDF + Logistic
+Regression, но 77 синтетических фраз проверяют только инженерный контур.
+Optional E5 добавляет semantic retrieval, но его пороги также не
+откалиброваны на реальном потоке.
 
 ## Самое слабое место и assumptions
 
@@ -45,7 +45,7 @@ suggest-mode до ограниченного auto-reply canary.
 
 1. сравнить реализованные rules и TF-IDF Logistic Regression с Linear SVM
    по risk–coverage curve на реальном temporal split;
-2. сравнить BM25 и hybrid retrieval по incorrect-context и Recall@k;
+2. сравнить lexical, E5 и BM25 по incorrect-context и Recall@k;
 3. в suggest-пилоте сравнить детерминированный шаблон и grounded LLM по
    acceptance, размеру правок, safety и стоимости;
 4. провести replay массового инцидента и отказов audit/LLM.
@@ -80,6 +80,14 @@ rate-limit budget, полноценного circuit breaker и schema-groundedne
 validator. Локальный denylist output снижает очевидный риск, но не
 доказывает отсутствие галлюцинаций. Поэтому внешний provider по умолчанию
 выключен, а расширять auto-reply allowlist из-за наличия LLM нельзя.
+
+## Ограничения semantic retriever
+
+Pinned E5 revision и cache делают запуск воспроизводимее, но не доказывают
+качество на русскоязычных тикетах проекта. Реальная модель не скачивается
+в обычном CI; contract, cache, abstention и fallback проверяются fake
+encoder. Перед пилотом нужны offline benchmark, warm latency/memory,
+adversarial multilingual срез и проверка лицензии/model provenance.
 
 ## Развёртывание и версии
 

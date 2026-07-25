@@ -39,11 +39,12 @@ AI заметно ускорил реализацию, но ключевые о�
 проверки связности и объяснимости PoC. Позже по отдельной гипотезе добавлен
 обучаемый TF-IDF + Logistic Regression baseline и локальные
 Ollama/OpenRouter-адаптеры. Они опциональны и не расширяют safety-allowlist.
-Не добавлены embeddings, брокер и сложный MLOps. Позже добавлены небольшой
-FastAPI/dashboard и конкурентный benchmark, потому что их поведение
-проверяется локально и не требует внешней инфраструктуры. Confidence rules
-явно назван эвристикой, а ML `predict_proba` — некалиброванным на реальном
-распределении.
+На первом этапе не добавлялись embeddings, брокер и сложный MLOps. Позже
+появились небольшой FastAPI/dashboard, конкурентный benchmark и optional
+semantic retriever: их contracts, fallback и safety-путь можно проверить
+локально без обязательного внешнего сервиса. Confidence rules явно назван
+эвристикой, а ML `predict_proba` и semantic score — некалиброванными на
+реальном распределении.
 
 Кандидат на автоматический ответ ограничен `service_outage`, а default
 rollout оставляет его подсказкой оператору. Для payment, refund и
@@ -89,6 +90,11 @@ rollout, API-демо и реального fault benchmark. После пров
 добавлены versioned rollout gate, FastAPI/dashboard, параллельный hot path
 и single-flight. Конкурентный тест отдельно подтверждает, что повтор одного
 `ticket_id` создаёт одно решение и одну audit-запись.
+
+Отдельная итерация добавила pinned E5 revision и cache KB embeddings.
+Чтобы не превращать наличие модели в недоказанное качество, обычный CI
+проверяет encoder contract, semantic abstention, cache и lexical fallback;
+скачивание тяжёлого checkpoint остаётся явным optional запуском.
 
 Окончательные ограничения, thresholds и claims сверялись с выполняемым
 кодом и тестами; AI-выводы не заменяют проверку на реальных данных,

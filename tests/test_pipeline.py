@@ -5,7 +5,7 @@ from threading import Barrier
 
 from ticket_automation.audit import JsonlAudit
 from ticket_automation.generator import DeterministicGenerator
-from ticket_automation.models import Ticket
+from ticket_automation.models import RetrievalResult, Ticket
 from ticket_automation.pipeline import TicketPipeline
 from ticket_automation.rollout import RolloutConfig
 
@@ -120,6 +120,38 @@ def test_pii_is_escalated_before_retrieval(tmp_path: Path) -> None:
     assert result.risk.contains_pii is True
 
 
+def test_safe_retriever_receives_only_sanitized_text(tmp_path: Path) -> None:
+    class RecordingRetriever:
+        version = "recording-v1"
+
+        def __init__(self) -> None:
+            self.query = ""
+
+        def search(self, query: str, category: str) -> RetrievalResult:
+            self.query = query
+            return RetrievalResult(
+                "kb-outage-01",
+                "Сбой",
+                "Повторите попытку позднее.",
+                0.9,
+            )
+
+    retriever = RecordingRetriever()
+    app = TicketPipeline(
+        retriever=retriever,  # type: ignore[arg-type]
+        audit=JsonlAudit(tmp_path / "audit.jsonl"),
+    )
+    result = app.process(
+        ticket(
+            "semantic-pii",
+            "Приложение не открывается. Общий сбой. user@example.com",
+        )
+    )
+
+    assert result.decision.action == "escalate"
+    assert retriever.query == ""
+
+
 def test_same_ticket_id_returns_same_decision_and_one_audit_record(
     tmp_path: Path,
 ) -> None:
@@ -158,9 +190,10 @@ def test_audit_has_decision_but_not_ticket_text_or_card(tmp_path: Path) -> None:
     record = json.loads(raw_audit)
     assert record["ticket_id"] == "audit-risk"
     assert record["action"] == "escalate"
-    assert record["pipeline_version"] == "0.3.0"
+    assert record["pipeline_version"] == "0.4.0"
     assert record["classifier_version"] == "rules-v1"
     assert record["knowledge_base_version"].startswith("sha256:")
+    assert record["retriever_version"].startswith("sha256:")
     assert "4111" not in raw_audit
     assert "С карты" not in raw_audit
 
