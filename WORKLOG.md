@@ -30,3 +30,9 @@
 14. ML-путь встроен через интерфейс pipeline, но rules оставлен default;
     прежняя safety-policy применяется к обоим классификаторам без
     послабления порога ради demo.
+15. Финальный аудит выявил расхождение safety-переходов СМО с основным
+    pipeline; PII/high-risk/low-confidence и `operator_required` приведены
+    к единой fail-closed семантике и закреплены regression-тестами.
+16. Для воспроизводимого развёртывания добавлены единая версия приложения,
+    Docker/Compose, immutable version tag, audit-версии и fast-forward
+    update/rollback workflow.

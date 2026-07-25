@@ -13,9 +13,9 @@ rules/ML-классификатор, lexical retrieval, policy, детермин
 ```mermaid
 flowchart LR
     C[Chat / email / web / mobile] --> I[Ingestion and normalization]
-    I --> R[PII and risk scan]
-    R --> M[Fast classifier]
-    M --> P[Policy engine]
+    I --> M[Local fast classifier]
+    M --> R[PII and category-aware risk scan]
+    R --> P[Policy engine]
     P -->|risk / abstention| O[Operator queue]
     P -->|safe candidate| Q[Async work queue]
     Q --> K[Knowledge retrieval]
@@ -33,9 +33,11 @@ flowchart LR
 
 Ingestion приводит каналы к единой схеме `Ticket`, назначает стабильный
 ID и сохраняет исходник в защищённом ticket store. На синхронном пути
-правила находят PII и high-risk сигналы, локальный классификатор возвращает
-категорию и confidence, policy выбирает маршрут или abstention. Этот путь
-не вызывает LLM и должен укладываться в ориентир 500 мс.
+локальный классификатор возвращает категорию и confidence, затем
+category-aware rules находят PII/high-risk и применяют denylist. Policy
+сразу завершает risky, PII, denylist и low-confidence случаи эскалацией,
+не вызывая retrieval или generator. Этот путь не вызывает LLM и должен
+укладываться в ориентир 500 мс.
 
 Для безопасного кандидата создаётся асинхронная задача. Retrieval получает
 очищенный минимум текста и версию базы знаний; генератор видит только
@@ -45,8 +47,9 @@ PII, запрещённых обещаний и ссылок на действи
 для них не вызывается.
 
 В PoC retrieval и генерация выполняются последовательно ради простоты CLI.
-При этом safety-решение вычисляется до генератора, а его отказ не роняет
-pipeline. Provider получает только очищенный текст и разрешённую статью;
+Retrieval вызывается только после раннего safety gate и получает
+редактированный текст. Его результат участвует в окончательном policy-
+решении. Provider получает тот же очищенный текст и разрешённую статью;
 локальный validator отклоняет PII, пустой/слишком длинный output и
 несколько классов запрещённых обещаний. До production этого недостаточно:
 нужны schema/groundedness checks и асинхронный execution.
@@ -90,8 +93,9 @@ pipeline создаёт новую ревизию без затирания ис
 
 PoC кэширует первое решение по ID только в рамках экземпляра процесса и
 пишет одну строку JSONL. Межпроцессную идемпотентность он не обещает.
-Аудит содержит сигналы, версии, scores, route, latency и fallback, но не
-текст тикета, найденные email, телефон или номер карты.
+Аудит содержит сигналы, версии pipeline/classifier/KB, scores, route,
+latency и fallback, но не текст тикета, найденные email, телефон или номер
+карты.
 
 ## Данные и доступ
 

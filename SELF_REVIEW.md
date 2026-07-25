@@ -79,3 +79,10 @@ rate-limit budget, полноценного circuit breaker и schema-groundedne
 validator. Локальный denylist output снижает очевидный риск, но не
 доказывает отсутствие галлюцинаций. Поэтому внешний provider по умолчанию
 выключен, а расширять auto-reply allowlist из-за наличия LLM нельзя.
+
+## Развёртывание и версии
+
+Docker/Compose дают воспроизводимый CLI deployment и быстрый fast-forward
+update, но это не production rollout: нет registry promotion, подписания
+образов, SBOM, vulnerability gate и оркестратора. Version tags не должны
+перезаписываться; ML-артефакт переобучается после смены scikit-learn.

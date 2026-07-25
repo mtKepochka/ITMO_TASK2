@@ -27,6 +27,7 @@ shadow/suggest-пилоте, а не выводить из искусствен�
 - idempotency по ticket ID в рамках одного экземпляра pipeline.
 
 Runtime не требует API-ключей, сети или скачивания моделей.
+Текущая версия приложения — `0.2.0`.
 
 Дополнительно реализована изолированная дискретно-событийная модель СМО:
 она сравнивает baseline, burst, деградацию LLM и incident-mode на уровне
@@ -63,6 +64,28 @@ python -m ticket_automation.cli demo --simulate-generator-failure
 CLI печатает категорию, эвристический confidence, risk, retrieval,
 решение, fallback и путь к audit log. По умолчанию аудит записывается в
 `audit/decisions.jsonl`; runtime-файл исключён из Git.
+
+### Быстрое развёртывание
+
+При наличии Docker весь локальный setup заменяется одной командой:
+
+```bash
+make container-demo
+```
+
+Для контейнерного ML-сценария модель обучается и сохраняется в именованном
+volume:
+
+```bash
+make container-train-ml
+make container-demo-ml
+```
+
+`make deploy` собирает версионированный образ и проверяет его версию.
+`make update` выполняет fast-forward обновление checkout и повторный
+deployment; `make update-ml` дополнительно переобучает и проверяет
+ML-артефакт. Полный контракт версий, rollback и эксплуатационные команды
+описаны в [руководстве по развёртыванию](docs/deployment.md).
 
 ### Обучаемый классификатор
 
@@ -142,8 +165,8 @@ GitHub Actions запускается для push в `main`, pull request и в�
 Workflow устанавливает проект с нуля, выполняет tests/demo/smoke,
 обучает и запускает ML-классификатор, исполняет четыре simulation-сценария,
 проверяет воспроизводимость JSON, balance и safety-инварианты, а также
-рендерит Mermaid. ML-отчёт, отчёты симуляции и SVG доступны в артефакте
-workflow в течение семи дней.
+собирает и запускает deployment image и рендерит Mermaid. ML-отчёт,
+отчёты симуляции и SVG доступны в артефакте workflow в течение семи дней.
 
 ## Demo
 
@@ -180,7 +203,9 @@ hot path до 500 мс от асинхронных retrieval/generation.
 - [Протокол оценки](docs/evaluation.md)
 - [Monitoring](docs/monitoring.md)
 - [Риски и эксплуатация](docs/risks-and-ops.md)
+- [Развёртывание и обновления](docs/deployment.md)
 - [Дискретно-событийная модель СМО](docs/queueing-model.md)
+- [История версий](CHANGELOG.md)
 - [Mermaid-схема СМО](docs/queueing-model.md#схема-сети)
 - [Использование AI](AI_USAGE.md)
 - [Рабочий журнал](WORKLOG.md)

@@ -26,7 +26,8 @@ capacity. Все интенсивности, latency и вероятности, 
 1. источник создаёт категорию и условные признаки заявки;
 2. конечный входной буфер и нормализация принимают тикет;
 3. risk scan и classifier/policy образуют быстрый путь;
-4. PII, high risk, low confidence и denylist ведут к оператору;
+4. PII, high risk, low confidence, denylist и `operator_required` ведут
+   только к оператору и не могут использовать fallback;
 5. остальные заявки идут напрямую оператору либо в retrieval;
 6. retrieval miss переводится в fallback для `service_outage`, иначе к
    оператору;
@@ -239,16 +240,18 @@ backlog показан отдельно и намеренно не маскир�
 
 | Scenario | Arrived | Completed | Lost | Unfinished | LLM requests | Rejection p | p95 total, s | Recovery, s |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| baseline | 8318 | 8313 | 0 | 5 | 2606 | .700 | 969.1 | — |
-| burst | 22765 | 22760 | 0 | 5 | 10468 | .554 | 2298.2 | 130 |
-| llm-degradation | 4129 | 4128 | 0 | 1 | 772 | .845 | 976.4 | — |
-| incident-mode | 22765 | 22761 | 0 | 4 | 2033 | .323 | 2182.8 | 0 |
+| baseline | 8318 | 8313 | 0 | 5 | 2606 | .700 | 971.3 | — |
+| burst | 22765 | 22754 | 0 | 11 | 10468 | .554 | 2656.6 | 130 |
+| llm-degradation | 4129 | 4128 | 0 | 1 | 772 | .845 | 980.3 | — |
+| incident-mode | 22765 | 22754 | 0 | 11 | 2033 | .335 | 2650.0 | 0 |
 
 Это результат конфигурации, не прогноз production. Парное сравнение burst
 и incident-mode показывает ожидаемый механизм: шаблон уменьшил LLM load и
-automation rejection без расширения auto-reply allowlist. Высокий общий
-p95 определяется в основном operator path; bottleneck во всех четырёх
-запусках — operator.
+automation rejection без расширения auto-reply allowlist. Safety-отказы
+не используют fallback, поэтому burst и incident-mode сохраняют одинаковую
+нагрузку на операторов; incident template влияет только на безопасный
+automated path. Высокий общий p95 определяется в основном operator path;
+bottleneck во всех четырёх запусках — operator.
 
 ## Ограничения и калибровка
 
