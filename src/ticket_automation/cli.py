@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Sequence
 
 from .audit import JsonlAudit
-from .generator import DeterministicGenerator
+from .generator import create_generator
 from .models import Ticket
 from .pipeline import PROJECT_ROOT, TicketPipeline
 
@@ -28,6 +29,27 @@ def _print_result(ticket_id: str, result: object) -> None:
     print(json.dumps(value, ensure_ascii=False, indent=2))
 
 
+def _add_generator_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--generator",
+        choices=("deterministic", "ollama", "openrouter"),
+        help="response generator; defaults to TICKET_GENERATOR or deterministic",
+    )
+    parser.add_argument(
+        "--model",
+        help="LLM model name; defaults to TICKET_LLM_MODEL",
+    )
+    parser.add_argument(
+        "--llm-base-url",
+        help="provider API base URL",
+    )
+    parser.add_argument(
+        "--llm-timeout",
+        type=float,
+        help="provider timeout in seconds; defaults to TICKET_LLM_TIMEOUT or 15",
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Safe ticket automation PoC")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -35,21 +57,52 @@ def build_parser() -> argparse.ArgumentParser:
     demo = subparsers.add_parser("demo", help="run bundled scenarios")
     demo.add_argument("--simulate-generator-failure", action="store_true")
     demo.add_argument("--audit", type=Path)
+    _add_generator_arguments(demo)
 
     process = subparsers.add_parser("process", help="process tickets")
     source = process.add_mutually_exclusive_group(required=True)
     source.add_argument("--file", type=Path)
     source.add_argument("--text")
     process.add_argument("--audit", type=Path)
+    _add_generator_arguments(process)
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
     audit = JsonlAudit(args.audit) if args.audit else None
-    generator = DeterministicGenerator(
-        simulate_failure=getattr(args, "simulate_generator_failure", False)
+    provider = args.generator or os.getenv(
+        "TICKET_GENERATOR", "deterministic"
     )
+    model = args.model or os.getenv("TICKET_LLM_MODEL")
+    timeout_value = (
+        args.llm_timeout
+        if args.llm_timeout is not None
+        else os.getenv("TICKET_LLM_TIMEOUT", "15")
+    )
+    try:
+        timeout_seconds = float(timeout_value)
+        if args.llm_base_url:
+            base_url = args.llm_base_url
+        elif provider == "ollama":
+            base_url = os.getenv("OLLAMA_BASE_URL")
+        elif provider == "openrouter":
+            base_url = os.getenv("OPENROUTER_BASE_URL")
+        else:
+            base_url = None
+        generator = create_generator(
+            provider,
+            model=model,
+            api_key=os.getenv("OPENROUTER_API_KEY"),
+            base_url=base_url,
+            timeout_seconds=timeout_seconds,
+            simulate_failure=getattr(
+                args, "simulate_generator_failure", False
+            ),
+        )
+    except ValueError as error:
+        parser.error(str(error))
     pipeline = TicketPipeline(generator=generator, audit=audit)
 
     if args.command == "demo":

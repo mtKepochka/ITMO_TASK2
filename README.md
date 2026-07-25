@@ -20,6 +20,7 @@ shadow/suggest-пилоте, а не выводить из искусствен�
 - локальная JSON-база знаний и lexical retrieval;
 - policy с denylist, узкой allowlist и abstention;
 - детерминированный grounded-ответ и безопасный fallback при отказе;
+- опциональные HTTP-адаптеры Ollama/OpenRouter с локальной валидацией;
 - JSONL-аудит без исходного текста тикета;
 - CLI, четыре demo-сценария, unit и smoke tests;
 - idempotency по ticket ID в рамках одного экземпляра pipeline.
@@ -59,6 +60,41 @@ python -m ticket_automation.cli demo --simulate-generator-failure
 CLI печатает категорию, эвристический confidence, risk, retrieval,
 решение, fallback и путь к audit log. По умолчанию аудит записывается в
 `audit/decisions.jsonl`; runtime-файл исключён из Git.
+
+### Опциональный LLM
+
+По умолчанию работает `deterministic`: тесты и demo не требуют сети.
+Локальную установленную модель Ollama можно включить так:
+
+```bash
+TICKET_GENERATOR=ollama \
+TICKET_LLM_MODEL='<installed-model>' \
+python -m ticket_automation.cli process \
+  --text "Приложение не открывается. Это общий сбой?"
+```
+
+Для OpenRouter ключ передаётся только через окружение:
+
+```bash
+export OPENROUTER_API_KEY='<key>'
+TICKET_GENERATOR=openrouter \
+TICKET_LLM_MODEL='<provider/model>' \
+python -m ticket_automation.cli process \
+  --text "Приложение не открывается. Это общий сбой?"
+```
+
+Те же значения можно задать флагами `--generator`, `--model`,
+`--llm-base-url` и `--llm-timeout`; API key намеренно не принимается через
+CLI. Дополнительные переменные: `OLLAMA_BASE_URL`, `OPENROUTER_BASE_URL` и
+`TICKET_LLM_TIMEOUT`.
+
+Адаптер вызывается только после PII/risk scan и получает очищенный текст
+вместе с найденной статьёй. Пустой, слишком длинный, содержащий PII или
+запрещённое обещание output отклоняется и включает прежний
+fallback/escalation. Это минимальный guardrail, а не полноценная проверка
+groundedness. Контракты соответствуют официальным
+[Ollama Chat API](https://docs.ollama.com/api/chat) и
+[OpenRouter Chat Completions](https://openrouter.ai/docs/api/api-reference/chat/send-chat-completion-request).
 
 Simulation CLI поддерживает фиксированный seed и JSON/CSV:
 
@@ -103,10 +139,11 @@ retrieval — за контекст, генератор — только за ч
 является откалиброванной вероятностью**.
 
 PoC выполняется одним процессом, последовательно и на четырёх статьях.
-Здесь нет внешнего LLM, обученной модели, настоящей async-очереди,
-межпроцессной идемпотентности, production storage или измеренного качества
-на реальных данных. Целевая архитектура отделяет hot path до 500 мс от
-асинхронных retrieval/generation.
+Внешний LLM по умолчанию выключен; адаптеры являются точкой расширения, а
+не production-интеграцией. Здесь нет обученной модели, настоящей
+async-очереди, межпроцессной идемпотентности, production storage или
+измеренного качества на реальных данных. Целевая архитектура отделяет hot
+path до 500 мс от асинхронных retrieval/generation.
 
 ## Документация
 

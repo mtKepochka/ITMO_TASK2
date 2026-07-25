@@ -68,3 +68,12 @@ security, юридические угрозы и необработанное PI
 без смен и skill-based routing, а recovery автоматического пути не означает
 исчезновение operator backlog. До практических выводов нужны incident
 replay, реальные latency/arrival histograms и серия репликаций.
+
+## Ограничения LLM-адаптеров
+
+Ollama/OpenRouter-адаптеры проверяют совместимость интерфейса, а не
+качество конкретной модели. Вызов в PoC синхронный, нет retry/backoff,
+rate-limit budget, полноценного circuit breaker и schema-groundedness
+validator. Локальный denylist output снижает очевидный риск, но не
+доказывает отсутствие галлюцинаций. Поэтому внешний provider по умолчанию
+выключен, а расширять auto-reply allowlist из-за наличия LLM нельзя.
