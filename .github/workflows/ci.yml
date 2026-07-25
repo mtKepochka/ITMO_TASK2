@@ -20,16 +20,16 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip
 
       - name: Set up Node for Mermaid validation
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "22"
 
@@ -78,6 +78,10 @@ jobs:
             inside { print }
           ' docs/queueing-model.md > /tmp/ticket-system.mmd
           test -s /tmp/ticket-system.mmd
+          chrome_path="$(command -v google-chrome || command -v google-chrome-stable)"
+          test -x "$chrome_path"
+          export PUPPETEER_EXECUTABLE_PATH="$chrome_path"
+          "$chrome_path" --version
           npx --yes @mermaid-js/mermaid-cli@11.16.0 \
             --input /tmp/ticket-system.mmd \
             --output artifacts/simulation/ticket-system.svg \
