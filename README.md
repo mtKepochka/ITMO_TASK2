@@ -108,7 +108,7 @@ PoC выполняется одним процессом, последовате
 - [Monitoring](docs/monitoring.md)
 - [Риски и эксплуатация](docs/risks-and-ops.md)
 - [Дискретно-событийная модель СМО](docs/queueing-model.md)
-- [Редактируемая схема СМО](docs/ticket-system.drawio)
+- [Mermaid-схема СМО](docs/queueing-model.md#схема-сети)
 - [Использование AI](AI_USAGE.md)
 - [Рабочий журнал](WORKLOG.md)
 - [Самопроверка](SELF_REVIEW.md)

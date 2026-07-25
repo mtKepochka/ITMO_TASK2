@@ -36,7 +36,88 @@ capacity. Все интенсивности, latency и вероятности, 
 9. успешный outage получает auto-reply, остальные успешные черновики —
    operator review.
 
-Схема сети: [редактируемый Draw.io-файл](ticket-system.drawio).
+### Схема сети
+
+Схема использует условные обозначения блок-схем по ГОСТ 19.701: овал —
+начало или конечное состояние, параллелограмм — входные данные,
+прямоугольник — обработка, ромб — решение, цилиндр — очередь с хранимыми
+заявками. Цветовое кодирование намеренно не используется.
+
+```mermaid
+flowchart TB
+    START([Начало])
+    FLOW[/Входящий поток заявок<br/>piecewise Poisson и смесь категорий/]
+    INPUT_Q[(Входной буфер<br/>K = 5000)]
+    INPUT[Нормализация<br/>c = 16; LogNormal]
+    RISK_Q[(Очередь PII / risk scan<br/>K = 2000)]
+    RISK[PII / risk scan<br/>c = 8; LogNormal]
+    POLICY_Q[(Очередь классификации<br/>K = 2000)]
+    POLICY[Классификатор и policy<br/>c = 8; LogNormal]
+
+    SAFETY{"PII, high risk,<br/>low confidence или denylist?"}
+    OP_REQUIRED{"Оператор обязателен<br/>для категории?"}
+    INCIDENT{"Активен incident-mode<br/>для service_outage?"}
+
+    RETRIEVAL_Q[(Очередь retrieval<br/>K = 2000)]
+    RETRIEVAL[Поиск статьи<br/>c = 16; LogNormal]
+    HIT{"Статья найдена?<br/>P(hit | category)"}
+
+    PROVIDER{"Provider healthy / degraded<br/>и circuit breaker закрыт?"}
+    LLM_Q[(Очередь генерации<br/>K = 2000)]
+    LLM[Генерация черновика<br/>c = 24; LogNormal; timeout = 8 s]
+    GENERATED{"Генерация успешна?<br/>P(failure | provider state)"}
+
+    VALIDATOR_Q[(Очередь валидации<br/>K = 1000)]
+    VALIDATOR[Проверка ответа<br/>c = 8; LogNormal]
+    VALID{"Ответ допустим?<br/>P(reject | category)"}
+    ALLOWLIST{"Категория входит<br/>в auto-reply allowlist?"}
+    SAFE_FALLBACK{"Есть утверждённый<br/>безопасный шаблон?"}
+
+    OPERATOR_Q[(Очередь операторов<br/>K = 25000)]
+    OPERATOR[Обработка оператором<br/>c = 1100; LogNormal]
+    FALLBACK_Q[(Очередь fallback<br/>K = 1000)]
+    FALLBACK[Утверждённый шаблон<br/>c = 8; LogNormal]
+
+    AUTO_END([Автоматический ответ])
+    OPERATOR_END([Обработано оператором])
+    FALLBACK_END([Завершено через fallback])
+    LOSS_END([Техническая потеря])
+
+    START --> FLOW --> INPUT_Q --> INPUT --> RISK_Q --> RISK
+    RISK --> POLICY_Q --> POLICY --> SAFETY
+
+    SAFETY -- Да --> OPERATOR_Q
+    SAFETY -- Нет --> OP_REQUIRED
+    OP_REQUIRED -- Да --> OPERATOR_Q
+    OP_REQUIRED -- Нет --> INCIDENT
+
+    INCIDENT -- Да --> FALLBACK_Q
+    INCIDENT -- Нет --> RETRIEVAL_Q --> RETRIEVAL --> HIT
+    HIT -- Нет --> SAFE_FALLBACK
+    HIT -- Да --> PROVIDER
+
+    PROVIDER -- Нет --> SAFE_FALLBACK
+    PROVIDER -- Да --> LLM_Q --> LLM --> GENERATED
+    GENERATED -- Нет или timeout --> SAFE_FALLBACK
+    GENERATED -- Да --> VALIDATOR_Q --> VALIDATOR --> VALID
+
+    VALID -- Нет --> SAFE_FALLBACK
+    VALID -- Да --> ALLOWLIST
+    ALLOWLIST -- Да --> AUTO_END
+    ALLOWLIST -- Нет --> OPERATOR_Q
+
+    SAFE_FALLBACK -- Да --> FALLBACK_Q --> FALLBACK --> FALLBACK_END
+    SAFE_FALLBACK -- Нет --> OPERATOR_Q
+    OPERATOR_Q --> OPERATOR --> OPERATOR_END
+
+    INPUT_Q -. Буфер переполнен .-> LOSS_END
+    OPERATOR_Q -. Последняя очередь переполнена .-> LOSS_END
+    LLM_Q -. Очередь переполнена .-> SAFE_FALLBACK
+```
+
+`c` обозначает число параллельных каналов обслуживания, `K` — конечную
+ёмкость очереди. Точные параметры сценариев остаются в конфигурации и
+таблицах ниже, чтобы схема описывала структуру, а не один запуск.
 
 ## Входящий поток
 
