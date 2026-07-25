@@ -20,7 +20,7 @@ def percentile(values: Iterable[float], quantile: float) -> float:
 @dataclass
 class NodeMetrics:
     waits: list[float] = field(default_factory=list)
-    busy_channel_seconds: float = 0.0
+    busy_intervals: list[tuple[float, float]] = field(default_factory=list)
     completed: int = 0
     rejected: int = 0
     max_queue_length: int = 0

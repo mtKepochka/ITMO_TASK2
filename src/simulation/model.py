@@ -64,7 +64,9 @@ class ServiceNode:
             timeout = self.config.timeout_seconds
             timed_out = timeout is not None and sampled > timeout
             service_time = min(sampled, timeout) if timed_out else sampled
-            self.metrics.busy_channel_seconds += service_time
+            self.metrics.busy_intervals.append(
+                (self.env.now, self.env.now + service_time)
+            )
             yield self.env.timeout(service_time)
             self.metrics.completed += 1
             return ServiceResult(
@@ -99,12 +101,18 @@ class Simulation:
     def __init__(self, config: SimulationConfig, *, seed: int) -> None:
         self.config = config
         self.seed = seed
-        self.rng = random.Random(seed)
+        self.arrival_rng = random.Random(seed)
+        self.ticket_rng = random.Random(seed + 1)
+        self.provider_rng = random.Random(seed + 2)
         self.env = simpy.Environment()
         self.metrics = SimulationMetrics()
         self.nodes = {
-            name: ServiceNode(self.env, node_config, self.rng)
-            for name, node_config in config.services.items()
+            name: ServiceNode(
+                self.env,
+                node_config,
+                random.Random(seed + 1_000 + index),
+            )
+            for index, (name, node_config) in enumerate(config.services.items())
         }
         self.active_tickets: dict[int, SimTicket] = {}
         self.queue_series: list[dict[str, float | int | str]] = []
@@ -127,7 +135,7 @@ class Simulation:
 
     def _choose_category(self, mix: dict[Category, float]) -> Category:
         weights = [mix.get(category, 0.0) for category in CATEGORIES]
-        return self.rng.choices(CATEGORIES, weights=weights, k=1)[0]
+        return self.ticket_rng.choices(CATEGORIES, weights=weights, k=1)[0]
 
     def _make_ticket(
         self, ticket_id: int, category: Category, now: float
@@ -137,13 +145,14 @@ class Simulation:
             id=ticket_id,
             category=category,
             arrived_at=now,
-            contains_pii=self.rng.random() < probabilities.pii,
-            high_risk=self.rng.random() < probabilities.high_risk,
-            low_confidence=self.rng.random() < probabilities.low_confidence,
-            retrieval_hit=self.rng.random() < probabilities.retrieval_hit,
-            validation_reject=self.rng.random()
+            contains_pii=self.ticket_rng.random() < probabilities.pii,
+            high_risk=self.ticket_rng.random() < probabilities.high_risk,
+            low_confidence=self.ticket_rng.random()
+            < probabilities.low_confidence,
+            retrieval_hit=self.ticket_rng.random() < probabilities.retrieval_hit,
+            validation_reject=self.ticket_rng.random()
             < probabilities.validation_reject,
-            operator_required=self.rng.random()
+            operator_required=self.ticket_rng.random()
             < probabilities.operator_required,
         )
 
@@ -161,7 +170,7 @@ class Simulation:
                     return
                 yield self.env.timeout(min(next_starts) - self.env.now)
                 continue
-            interarrival = self.rng.expovariate(rate)
+            interarrival = self.arrival_rng.expovariate(rate)
             if self.env.now + interarrival >= self.config.arrival_duration:
                 return
             yield self.env.timeout(interarrival)
@@ -322,7 +331,10 @@ class Simulation:
             if degraded
             else self.config.provider.healthy_error_probability
         )
-        failed = llm_result.timed_out or self.rng.random() < error_probability
+        failed = (
+            llm_result.timed_out
+            or self.provider_rng.random() < error_probability
+        )
         self.breaker.record(success=not failed, now=self.env.now)
         if failed:
             self.metrics.llm_failures += 1
@@ -387,9 +399,12 @@ class Simulation:
         )
         node_reports: dict[str, dict[str, float | int]] = {}
         for name, node in self.nodes.items():
-            utilization = node.metrics.busy_channel_seconds / (
-                node.config.capacity * observation
+            observed_busy_time = sum(
+                max(0.0, min(end, observation) - start)
+                for start, end in node.metrics.busy_intervals
+                if start < observation
             )
+            utilization = observed_busy_time / (node.config.capacity * observation)
             node_reports[name] = {
                 "completed": node.metrics.completed,
                 "rejected": node.metrics.rejected,
@@ -403,8 +418,15 @@ class Simulation:
                     percentile(node.metrics.waits, 0.95), 4
                 ),
                 "max_queue_length": node.metrics.max_queue_length,
-                "utilization": round(min(1.0, utilization), 6),
+                "utilization": round(utilization, 6),
             }
+        bottleneck = max(
+            node_reports,
+            key=lambda name: (
+                node_reports[name]["utilization"],
+                node_reports[name]["max_queue_length"],
+            ),
+        )
 
         arrived = self.metrics.arrived
         completed = self.metrics.completed
@@ -470,6 +492,7 @@ class Simulation:
                 percentile(self.metrics.total_times, 0.99), 4
             ),
             "recovery_time_seconds": self._recovery_time(),
+            "bottleneck_node": bottleneck,
             "rejection_reasons": dict(sorted(self.metrics.rejection_reasons.items())),
             "outcomes_by_category": {
                 category: dict(sorted(outcomes.items()))
