@@ -1,0 +1,30 @@
+[
+  {
+    "id": "demo-happy",
+    "channel": "chat",
+    "subject": "Приложение недоступно",
+    "text": "Приложение не открывается. Это общий сбой?",
+    "created_at": "2026-07-25T12:00:00Z"
+  },
+  {
+    "id": "demo-risky",
+    "channel": "email",
+    "subject": "Двойное списание",
+    "text": "С моей карты дважды списали деньги. Номер карты 4111 1111 1111 1111. Верните платёж.",
+    "created_at": "2026-07-25T12:01:00Z"
+  },
+  {
+    "id": "demo-low-confidence",
+    "channel": "mobile",
+    "subject": "",
+    "text": "Опять не работает.",
+    "created_at": "2026-07-25T12:02:00Z"
+  },
+  {
+    "id": "demo-agent-suggestion",
+    "channel": "web",
+    "subject": "Тариф",
+    "text": "Подскажите, где найти мой тариф?",
+    "created_at": "2026-07-25T12:03:00Z"
+  }
+]

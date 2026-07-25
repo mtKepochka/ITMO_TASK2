@@ -70,3 +70,29 @@ class Decision:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+@dataclass(frozen=True)
+class ProcessingResult:
+    classification: ClassificationResult
+    risk: RiskAssessment
+    retrieval: RetrievalResult
+    decision: Decision
+    audit_path: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "category": self.classification.category,
+            "confidence": self.classification.confidence,
+            "classification_signals": list(self.classification.signals),
+            "risk_level": self.risk.risk_level,
+            "contains_pii": self.risk.contains_pii,
+            "risk_reasons": list(self.risk.reasons),
+            "retrieval": {
+                "article_id": self.retrieval.article_id,
+                "title": self.retrieval.title,
+                "score": self.retrieval.score,
+            },
+            **self.decision.to_dict(),
+            "audit_path": self.audit_path,
+        }
