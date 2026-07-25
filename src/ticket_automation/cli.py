@@ -9,6 +9,7 @@ from typing import Sequence
 
 from .audit import JsonlAudit
 from .generator import create_generator
+from .ml_classifier import TfidfIntentClassifier
 from .models import Ticket
 from .pipeline import PROJECT_ROOT, TicketPipeline
 
@@ -47,6 +48,16 @@ def _add_generator_arguments(parser: argparse.ArgumentParser) -> None:
         "--llm-timeout",
         type=float,
         help="provider timeout in seconds; defaults to TICKET_LLM_TIMEOUT or 15",
+    )
+    parser.add_argument(
+        "--classifier",
+        choices=("rules", "ml"),
+        help="intent classifier; defaults to TICKET_CLASSIFIER or rules",
+    )
+    parser.add_argument(
+        "--classifier-model",
+        type=Path,
+        help="trusted local ML artifact path",
     )
 
 
@@ -103,7 +114,30 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     except ValueError as error:
         parser.error(str(error))
-    pipeline = TicketPipeline(generator=generator, audit=audit)
+
+    classifier_name = args.classifier or os.getenv(
+        "TICKET_CLASSIFIER", "rules"
+    )
+    classifier = None
+    if classifier_name == "ml":
+        model_path = args.classifier_model or Path(
+            os.getenv(
+                "TICKET_CLASSIFIER_MODEL",
+                PROJECT_ROOT
+                / "artifacts"
+                / "models"
+                / "intent-classifier.joblib",
+            )
+        )
+        try:
+            classifier = TfidfIntentClassifier.load_trusted(model_path)
+        except (FileNotFoundError, ValueError) as error:
+            parser.error(f"{error}; run `make train-ml` first")
+    pipeline = TicketPipeline(
+        generator=generator,
+        audit=audit,
+        classifier=classifier,
+    )
 
     if args.command == "demo":
         tickets = _load_tickets(DEMO_PATH)

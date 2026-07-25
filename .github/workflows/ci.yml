@@ -53,6 +53,22 @@ jobs:
           make demo
           make smoke
 
+      - name: Train and exercise ML classifier
+        run: |
+          make demo-ml
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(
+              Path("artifacts/ml/evaluation.json").read_text(encoding="utf-8")
+          )
+          assert report["train_examples"] == 56
+          assert report["test_examples"] == 21
+          assert 0.0 <= report["macro_f1"] <= 1.0
+          assert len(report["confusion_matrix"]) == 7
+          PY
+
       - name: Run queueing scenarios
         run: |
           make simulate
@@ -92,11 +108,12 @@ jobs:
           git diff --exit-code
           test -z "$(git status --short --untracked-files=no)"
 
-      - name: Upload simulation reports
+      - name: Upload evaluation reports
         uses: actions/upload-artifact@v4
         with:
-          name: simulation-reports-${{ github.sha }}
+          name: evaluation-reports-${{ github.sha }}
           path: |
+            artifacts/ml/evaluation.json
             artifacts/simulation/*.json
             artifacts/simulation/ticket-system.svg
           retention-days: 7

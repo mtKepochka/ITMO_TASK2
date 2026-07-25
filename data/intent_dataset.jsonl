@@ -1,0 +1,77 @@
+{"text":"Приложение не открывается, похоже общий сбой","category":"service_outage","split":"train"}
+{"text":"Сервис лежит и ничего не загружается","category":"service_outage","split":"train"}
+{"text":"У всех коллег сайт недоступен","category":"service_outage","split":"train"}
+{"text":"Массовый сбой мобильного приложения","category":"service_outage","split":"train"}
+{"text":"Страница выдаёт ошибку, сервис не работает","category":"service_outage","split":"train"}
+{"text":"Не открывается ни сайт, ни приложение","category":"service_outage","split":"train"}
+{"text":"Это общая авария? приложение лежит","category":"service_outage","split":"train"}
+{"text":"Сейчас наблюдается сбой сервиса?","category":"service_outage","split":"train"}
+{"text":"Приложение недоступно, это массовая проблема?","category":"service_outage","split":"test"}
+{"text":"Сайт лежит у всех пользователей","category":"service_outage","split":"test"}
+{"text":"Ничего не грузится после общего сбоя","category":"service_outage","split":"test"}
+{"text":"Не могу войти в личный кабинет","category":"access_issue","split":"train"}
+{"text":"Забыл пароль и не получается авторизоваться","category":"access_issue","split":"train"}
+{"text":"Не приходит код подтверждения для входа","category":"access_issue","split":"train"}
+{"text":"Как сбросить пароль от аккаунта","category":"access_issue","split":"train"}
+{"text":"Ошибка логина при авторизации","category":"access_issue","split":"train"}
+{"text":"Не пускает в профиль с правильным паролем","category":"access_issue","split":"train"}
+{"text":"Не могу получить одноразовый код","category":"access_issue","split":"train"}
+{"text":"Восстановление доступа не работает","category":"access_issue","split":"train"}
+{"text":"Не удаётся авторизоваться в аккаунте","category":"access_issue","split":"test"}
+{"text":"Код для входа так и не пришёл","category":"access_issue","split":"test"}
+{"text":"Помогите восстановить забытый пароль","category":"access_issue","split":"test"}
+{"text":"С карты дважды списали оплату","category":"payment_issue","split":"train"}
+{"text":"Платёж прошёл два раза","category":"payment_issue","split":"train"}
+{"text":"Не узнаю списание по карте","category":"payment_issue","split":"train"}
+{"text":"Оплата зависла, а деньги списались","category":"payment_issue","split":"train"}
+{"text":"Ошибка при оплате заказа","category":"payment_issue","split":"train"}
+{"text":"Списали лишнюю сумму за подписку","category":"payment_issue","split":"train"}
+{"text":"Платёж отклонён, но баланс уменьшился","category":"payment_issue","split":"train"}
+{"text":"Повторное списание за одну покупку","category":"payment_issue","split":"train"}
+{"text":"Деньги сняли два раза за один заказ","category":"payment_issue","split":"test"}
+{"text":"Неизвестная операция по моей карте","category":"payment_issue","split":"test"}
+{"text":"Оплата не прошла, средства списаны","category":"payment_issue","split":"test"}
+{"text":"Хочу оформить возврат денег","category":"refund_request","split":"train"}
+{"text":"Верните платёж за отменённый заказ","category":"refund_request","split":"train"}
+{"text":"Как получить деньги обратно","category":"refund_request","split":"train"}
+{"text":"Прошу вернуть стоимость подписки","category":"refund_request","split":"train"}
+{"text":"Отменил покупку, нужен возврат","category":"refund_request","split":"train"}
+{"text":"Когда поступят деньги после возврата","category":"refund_request","split":"train"}
+{"text":"Хочу отказаться и вернуть оплату","category":"refund_request","split":"train"}
+{"text":"Заявка на возврат средств","category":"refund_request","split":"train"}
+{"text":"Можно вернуть деньги за заказ?","category":"refund_request","split":"test"}
+{"text":"Отмените подписку и оформите возврат","category":"refund_request","split":"test"}
+{"text":"Средства после отмены ещё не вернулись","category":"refund_request","split":"test"}
+{"text":"Мой аккаунт взломали","category":"account_security","split":"train"}
+{"text":"Вижу чужой вход в профиль","category":"account_security","split":"train"}
+{"text":"Кто-то сменил пароль без меня","category":"account_security","split":"train"}
+{"text":"Подозреваю мошенничество с аккаунтом","category":"account_security","split":"train"}
+{"text":"Утекли мои данные из профиля","category":"account_security","split":"train"}
+{"text":"Аккаунт заблокирован после чужого входа","category":"account_security","split":"train"}
+{"text":"Неизвестное устройство вошло в кабинет","category":"account_security","split":"train"}
+{"text":"Украли доступ к учётной записи","category":"account_security","split":"train"}
+{"text":"Обнаружил вход, который не совершал","category":"account_security","split":"test"}
+{"text":"Кажется, мою учётную запись взломали","category":"account_security","split":"test"}
+{"text":"Кто-то получил доступ к моему профилю","category":"account_security","split":"test"}
+{"text":"Где посмотреть текущий тариф","category":"general_question","split":"train"}
+{"text":"Подскажите размер комиссии","category":"general_question","split":"train"}
+{"text":"Как изменить язык приложения","category":"general_question","split":"train"}
+{"text":"Какие функции входят в подписку","category":"general_question","split":"train"}
+{"text":"Где найти историю заказов","category":"general_question","split":"train"}
+{"text":"Как изменить настройки уведомлений","category":"general_question","split":"train"}
+{"text":"Расскажите об условиях тарифа","category":"general_question","split":"train"}
+{"text":"Как связаться со службой поддержки","category":"general_question","split":"train"}
+{"text":"Где находятся настройки профиля?","category":"general_question","split":"test"}
+{"text":"Какая комиссия на моём тарифе?","category":"general_question","split":"test"}
+{"text":"Подскажите возможности подписки","category":"general_question","split":"test"}
+{"text":"Что-то произошло","category":"unknown","split":"train"}
+{"text":"Помогите пожалуйста","category":"unknown","split":"train"}
+{"text":"Опять та же история","category":"unknown","split":"train"}
+{"text":"У меня вопрос","category":"unknown","split":"train"}
+{"text":"Странное поведение","category":"unknown","split":"train"}
+{"text":"Ничего не понятно","category":"unknown","split":"train"}
+{"text":"Это нормально?","category":"unknown","split":"train"}
+{"text":"Есть проблема","category":"unknown","split":"train"}
+{"text":"Снова что-то случилось","category":"unknown","split":"test"}
+{"text":"Не знаю, как объяснить проблему","category":"unknown","split":"test"}
+{"text":"Почему всё так странно?","category":"unknown","split":"test"}

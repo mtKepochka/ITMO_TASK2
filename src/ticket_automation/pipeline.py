@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from time import perf_counter
+from typing import Callable
 
 from .audit import JsonlAudit
 from .classifier import classify
@@ -10,7 +11,7 @@ from .generator import (
     DeterministicGenerator,
     ResponseGenerator,
 )
-from .models import ProcessingResult, Ticket
+from .models import ClassificationResult, ProcessingResult, Ticket
 from .policy import decide
 from .retrieval import LexicalRetriever
 from .risk import assess_risk, redact_pii
@@ -27,10 +28,12 @@ class TicketPipeline:
         retriever: LexicalRetriever | None = None,
         generator: ResponseGenerator | None = None,
         audit: JsonlAudit | None = None,
+        classifier: Callable[[Ticket], ClassificationResult] | None = None,
     ) -> None:
         self.retriever = retriever or LexicalRetriever.from_file(DEFAULT_KB_PATH)
         self.generator = generator or DeterministicGenerator()
         self.audit = audit or JsonlAudit(DEFAULT_AUDIT_PATH)
+        self.classifier = classifier or classify
         self._processed: dict[str, ProcessingResult] = {}
 
     def process(self, ticket: Ticket) -> ProcessingResult:
@@ -38,7 +41,7 @@ class TicketPipeline:
             return self._processed[ticket.id]
 
         started = perf_counter()
-        classification = classify(ticket)
+        classification = self.classifier(ticket)
         risk = assess_risk(ticket, classification.category)
         retrieval = self.retriever.search(
             f"{ticket.subject} {ticket.text}", classification.category

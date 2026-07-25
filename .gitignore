@@ -10,3 +10,5 @@ build/
 .env
 audit/*.jsonl
 artifacts/simulation/
+artifacts/ml/
+artifacts/models/
