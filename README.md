@@ -75,6 +75,14 @@ python -m simulation.cli compare --seed 42
 для одного из двух PNG-графиков — `--plots DIR` и установите
 `python -m pip install -e '.[plots]'`.
 
+## CI
+
+GitHub Actions запускается для push в `main`, pull request и вручную.
+Workflow устанавливает проект с нуля, выполняет tests/demo/smoke, четыре
+simulation-сценария, проверяет воспроизводимость JSON, balance и safety-
+инварианты, а также рендерит Mermaid. Отчёты симуляции и SVG доступны в
+артефакте workflow в течение семи дней.
+
 ## Demo
 
 | Ticket | Ожидаемое решение | Причина |

@@ -44,6 +44,7 @@ capacity. Все интенсивности, latency и вероятности, 
 заявками. Цветовое кодирование намеренно не используется.
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"primaryColor": "#ffffff", "primaryTextColor": "#000000", "primaryBorderColor": "#000000", "secondaryColor": "#ffffff", "tertiaryColor": "#ffffff", "lineColor": "#000000", "edgeLabelBackground": "#ffffff"}}}%%
 flowchart TB
     START([Начало])
     FLOW[/Входящий поток заявок<br/>piecewise Poisson и смесь категорий/]

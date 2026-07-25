@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Set up Node for Mermaid validation
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install project
+        run: python -m pip install -e '.[dev]'
+
+      - name: Check repository hygiene
+        run: |
+          git diff --check
+          if git ls-files | grep -Ei 'talent[ _-]*track|Talent Track\.html'; then
+            echo "Local task reference must not be tracked" >&2
+            exit 1
+          fi
+          test -z "$(git ls-files 'artifacts/*')"
+
+      - name: Run unit and scenario tests
+        run: make test
+
+      - name: Run ticket PoC
+        run: |
+          make demo
+          make smoke
+
+      - name: Run queueing scenarios
+        run: |
+          make simulate
+          make simulate-burst
+          make simulate-compare
+
+      - name: Check deterministic reports and invariants
+        run: |
+          python -m simulation.cli baseline --seed 42 --output /tmp/baseline-1.json
+          python -m simulation.cli baseline --seed 42 --output /tmp/baseline-2.json
+          diff -u /tmp/baseline-1.json /tmp/baseline-2.json
+          python scripts/check_simulation_report.py \
+            /tmp/baseline-1.json \
+            artifacts/simulation/baseline.json \
+            artifacts/simulation/burst.json \
+            artifacts/simulation/compare.json
+
+      - name: Render Mermaid diagram
+        run: |
+          awk '
+            /^```mermaid$/ { inside = 1; next }
+            inside && /^```$/ { exit }
+            inside { print }
+          ' docs/queueing-model.md > /tmp/ticket-system.mmd
+          test -s /tmp/ticket-system.mmd
+          npx --yes @mermaid-js/mermaid-cli@11.16.0 \
+            --input /tmp/ticket-system.mmd \
+            --output artifacts/simulation/ticket-system.svg \
+            --backgroundColor transparent
+
+      - name: Ensure tracked files stayed unchanged
+        run: |
+          git diff --exit-code
+          test -z "$(git status --short --untracked-files=no)"
+
+      - name: Upload simulation reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulation-reports-${{ github.sha }}
+          path: |
+            artifacts/simulation/*.json
+            artifacts/simulation/ticket-system.svg
+          retention-days: 7
